@@ -1,6 +1,6 @@
 import os
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional, Any, Union
 
 
@@ -10,15 +10,13 @@ class Dependency:
     Required: bool
 
 
-@dataclass(
-    repr=False,
-)
+@dataclass
 class TOCFile:
     Interface: Union[int, list[int]] = None
-    Title: str = None
-    Author: str = None
-    Version: str = None
-    Files: list[str] = None
+    Title: Optional[str] = None
+    Author: Optional[str] = None
+    Version: Optional[str] = None
+    Files: Optional[list[str]] = None
     Notes: Optional[str] = None
     LocalizedTitles: Optional[dict[str, str]] = None
     SavedVariables: Optional[list[str]] = None
