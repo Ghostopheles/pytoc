@@ -14,7 +14,7 @@ pip install git+https://github.com/Ghostopheles/pytoc.git
 
 ## Usage
 
-Usage is fairly minimal and straightforward:
+Usage is fairly minimal and straightforward to read a TOC file:
 ```py
 from pytoc import TOCFile, Dependency
 
@@ -33,6 +33,24 @@ for dep in toc.Dependencies
     dep: Dependency
     print(f"Dependency Name: {dep.Name} Required: {dep.Required}")
 ```
+
+Here's how you can write and export a TOC file:
+```py
+from pytoc import TOCFile, Dependency
+
+toc = TOCFile()
+toc.Interface = "110000"
+toc.Author = "Ghost"
+toc.Files = ["file1.lua", "file2.xml"]
+
+required = True
+toc.add_dependency("totalRP3", required)
+
+output = "path/to/dest.toc"
+toc.export(output)
+```
+
+For some examples, take a look at the [tests/test_toc.py] file.
 
 ## Notes
 
