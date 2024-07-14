@@ -50,7 +50,7 @@ output = "path/to/dest.toc"
 toc.export(output)
 ```
 
-For some examples, take a look at the [tests/test_toc.py] file.
+For some examples, take a look at the [test_toc.py](tests/test_toc.py) file.
 
 ## Notes
 
