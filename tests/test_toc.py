@@ -45,3 +45,7 @@ def test_parser():
         "Core/Coroutines.lua",
         "Core/Mixins.lua",
     ]
+    assert file.DefaultState == False
+    assert file.OnlyBetaAndPTR == False
+    with pytest.raises(Exception):
+        assert file.LoadWith == None
