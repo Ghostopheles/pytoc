@@ -1,0 +1,40 @@
+## Interface: 100207, 110000
+## Title: GhostTools
+## Title-frFR: GhostToolsfrfr
+## Notes: A collection of cadaverous tools for the discerning necromancer.
+## Author: Ghost
+## Version: 1
+## Bad: bad:data : ## # ###
+## SavedVariables: GhostConfig, GhostData, GhostScanData, GhostSavedProfile
+## SavedVariablesPerCharacter: GhostEventLog
+
+## OptionalDeps: totalRP3, KethoDoc, LibAdvFlight-1.0, LibSmokeSignal-1.0, BugGrabber, Warmup
+
+## IconTexture: Interface/AddOns/totalRP3/Resources/policegar
+
+## AddonCompartmentFunc: GHOST_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: GHOST_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: GHOST_OnAddonCompartmentLeave
+
+## X-Website: https://ghst.tools
+
+Libs/LibStub/LibStub.lua
+Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
+Libs/LibDataBroker-1.1/LibDataBroker-1.1.lua
+Libs/LibDBIcon-1.0/LibDBIcon-1.0/lib.xml
+Libs/FAIAP.lua
+
+GhostTools.lua
+GhostAddonCompartment.lua
+
+Experiments/Experiments.lua
+Experiments/EventLog.lua
+
+Core/ConsoleScripts.lua
+Core/EventListener.lua
+Core/ErrorHandler.lua
+Core/Global.lua
+Core/SlashCommands.lua
+Core/Macros.lua
+Core/Coroutines.lua
+Core/Mixins.lua
