@@ -36,7 +36,7 @@ for dep in toc.Dependencies
 
 Here's how you can write and export a TOC file:
 ```py
-from pytoc import TOCFile, Dependency
+from pytoc import TOCFile
 
 toc = TOCFile()
 toc.Interface = "110000"
