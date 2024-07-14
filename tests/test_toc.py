@@ -47,5 +47,7 @@ def test_parser():
     ]
     assert file.DefaultState == False
     assert file.OnlyBetaAndPTR == False
-    with pytest.raises(Exception):
-        assert file.LoadWith == None
+    assert file.LoadWith == None
+    assert file.LoadManagers == None
+    with pytest.raises(FileNotFoundError):
+        TOCFile("watch out! there's a ghost!")
