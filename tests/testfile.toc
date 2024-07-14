@@ -8,6 +8,9 @@
 ## SavedVariables: GhostConfig, GhostData, GhostScanData, GhostSavedProfile
 ## SavedVariablesPerCharacter: GhostEventLog
 
+## RequiredDeps: Blackjack
+## Dep: Graveyard
+## Depdumbdumbdep: FIFA2025
 ## OptionalDeps: totalRP3, KethoDoc, LibAdvFlight-1.0, LibSmokeSignal-1.0, BugGrabber, Warmup
 
 ## IconTexture: Interface/AddOns/totalRP3/Resources/policegar

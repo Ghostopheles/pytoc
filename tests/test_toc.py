@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from pytoc import TOCFile
+from pytoc import TOCFile, Dependency
 
 PWD = os.path.dirname(os.path.realpath(__file__))
 
@@ -51,3 +51,23 @@ def test_parser():
     assert file.LoadManagers == None
     with pytest.raises(FileNotFoundError):
         TOCFile("watch out! there's a ghost!")
+
+    # dep name: required?
+    expected_deps = {
+        "totalRP3": False,
+        "KethoDoc": False,
+        "LibAdvFlight-1.0": False,
+        "LibSmokeSignal-1.0": False,
+        "BugGrabber": False,
+        "Warmup": False,
+        "Blackjack": True,
+        "Graveyard": True,
+        "FIFA2025": True,
+    }
+
+    for dep in file.Dependencies:
+        dep: Dependency
+        if expected_deps[dep.Name] == dep.Required:
+            expected_deps.pop(dep.Name)
+
+    assert len(expected_deps) == 0
