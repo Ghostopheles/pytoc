@@ -1,3 +1,5 @@
+![Tests](https://github.com/Ghostopheles/pytoc/actions/workflows/tests.yml/badge.svg)
+
 # pytoc
 
 A Python package for parsing World of Warcraft TOC files used in addons.
