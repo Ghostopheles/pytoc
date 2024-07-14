@@ -79,7 +79,7 @@ class TOCFile:
             split = directive.split("-", 1)
             locale = split[1]
             self.add_localized_title(locale, value)
-        elif directive_lower.startswith("dep"):
+        elif directive_lower.startswith("dep") or directive_lower == "requireddeps":
             required = True
             self.add_dependency(value, required)
         elif directive_lower == "optionaldeps":
@@ -92,7 +92,11 @@ class TOCFile:
         if not self.has_attr("Dependencies"):
             self.Dependencies = []
 
-        self.Dependencies.append(Dependency(name, required))
+        if isinstance(name, list):
+            for _name in name:
+                self.Dependencies.append(Dependency(_name, required))
+        else:
+            self.Dependencies.append(Dependency(name, required))
 
     def add_localized_title(self, locale: str, value: str):
         if not self.has_attr("LocalizedTitles"):
