@@ -71,3 +71,28 @@ def test_parser():
             expected_deps.pop(dep.Name)
 
     assert len(expected_deps) == 0
+
+
+EXPORT_PATH = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), "test_output.toc"
+)
+
+
+def test_export():
+    toc = TOCFile()
+    toc.Interface = "110000"
+    toc.Author = "Ghost"
+    toc.OnlyBetaAndPTR = True
+    toc.DefaultState = True
+    toc.Files = ["file1.lua", "file2.xml"]
+    toc.export(EXPORT_PATH, True)
+    assert os.path.exists(EXPORT_PATH)
+
+
+def test_read_export():
+    toc = TOCFile(EXPORT_PATH)
+    assert toc.Interface == "110000"
+    assert toc.Author == "Ghost"
+    assert toc.OnlyBetaAndPTR == True
+    assert toc.DefaultState == True
+    assert toc.Files == ["file1.lua", "file2.xml"]

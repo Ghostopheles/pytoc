@@ -34,13 +34,62 @@ class TOCFile:
     DefaultState: Optional[bool] = False
     OnlyBetaAndPTR: Optional[bool] = False
 
-    def __init__(self, file_path: Optional[str]):
+    def __init__(self, file_path: Optional[str] = None):
         super().__init__()
         if file_path is not None:
             self.parse_toc_file(file_path)
 
     def has_attr(self, attr: str) -> bool:
         return attr in self.__dict__
+
+    def export(self, file_path: str, overwrite: bool = False):
+        if os.path.exists(file_path) and not overwrite:
+            raise FileExistsError(
+                "Destination file already exists. To overwrite, set overwrite=True"
+            )
+
+        lines = []
+        files = []
+        for directive in self.__annotations__:
+            if directive == "Files":
+                _files = self.Files
+                if _files is None or len(_files) == 0:
+                    continue
+
+                files.append("\n".join(_files))
+            elif directive == "Dependencies":
+                deps = self.Dependencies
+                if deps is None or len(deps) == 0:
+                    continue
+
+                required = [dep.Name for dep in deps if dep.Required]
+                optional = [dep.Name for dep in deps if not dep.Required]
+
+                if len(required) > 0:
+                    lines.append("## RequiredDeps: " + ", ".join(required) + "\n")
+
+                if len(optional) > 0:
+                    lines.append("## OptionalDeps: " + ", ".join(optional) + "\n")
+            else:
+                data = self.__getattribute__(directive)
+                if data is None:
+                    continue
+
+                if isinstance(data, list) and len(data) > 0:
+                    lines.append(f"## {directive}: " + ", ".join(data) + "\n")
+                else:
+                    if directive == "DefaultState":
+                        data = "enabled" if data else "disabled"
+                    elif directive == "OnlyBetaAndPTR":
+                        data = 1 if data else 0
+
+                    lines.append(f"## {directive}: {data}\n")
+
+        lines.append("\n")
+        lines.extend(files)
+
+        with open(file_path, "w") as f:
+            f.writelines(lines)
 
     def parse_toc_file(self, file_path: str):
         if not os.path.exists(file_path):
@@ -83,6 +132,10 @@ class TOCFile:
         elif directive_lower == "optionaldeps":
             required = False
             self.add_dependency(value, required)
+        elif directive_lower == "defaultstate":
+            self.__setattr__(directive, True if value == "enabled" else "disabled")
+        elif directive_lower == "onlybetaandptr":
+            self.__setattr__(directive, True if value == "1" else False)
         else:
             self.__setattr__(directive, value)
 
