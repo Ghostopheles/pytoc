@@ -14,7 +14,7 @@ pip install git+https://github.com/Ghostopheles/pytoc.git
 
 ## Usage
 
-Usage is fairly minimal and straightforward to read a TOC file:
+Reading a TOC file:
 ```py
 from pytoc import TOCFile, Dependency
 
@@ -34,7 +34,7 @@ for dep in toc.Dependencies
     print(f"Dependency Name: {dep.Name} Required: {dep.Required}")
 ```
 
-Here's how you can write and export a TOC file:
+Writing a TOC file:
 ```py
 from pytoc import TOCFile
 
