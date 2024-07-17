@@ -39,7 +39,7 @@ Here's how you can write and export a TOC file:
 from pytoc import TOCFile
 
 toc = TOCFile()
-toc.Interface = "110000"
+toc.Interface = 110000
 toc.Author = "Ghost"
 toc.Files = ["file1.lua", "file2.xml"]
 
@@ -54,10 +54,8 @@ For some examples, take a look at the [test_toc.py](tests/test_toc.py) file.
 
 ## Notes
 
-All dependency fields will be added to the `TOCFile` object. Fields that are not available to addons, or extra fields that don't begin with "X-" will be added directly to the object.
+All dependency fields will be added to the `TOCFile.Dependencies` list. Fields that are not available to addons, or extra fields that don't begin with "X-" will be added directly to the object namespace.
 
 Fields will overwrite eachother if more than one of that directive is present in the TOC file.
 
 For certain fields that accept comma-delimited input, the attribute may end up being either a `list` or a `str|int`, depending on if there are multiple entries or just a single one.
-
-Currently, entries are not cast to their intended types. i.e. `Interface` will be left as a string instead of converted to an integer.
