@@ -1,7 +1,9 @@
 import os
 
 from dataclasses import dataclass
-from typing import Optional, Any, Union
+from typing import Any, Optional, Union
+
+from .meta import TypedClass
 
 
 @dataclass
@@ -10,9 +12,8 @@ class Dependency:
     Required: bool
 
 
-@dataclass
-class TOCFile:
-    Interface: Union[int, list[int]] = None
+class TOCFile(TypedClass):
+    Interface: Optional[Union[int, list[int]]] = None
     Title: Optional[str] = None
     Author: Optional[str] = None
     Version: Optional[str] = None
@@ -140,7 +141,7 @@ class TOCFile:
             self.__setattr__(directive, value)
 
     def add_dependency(self, name: str, required: bool):
-        if not self.has_attr("Dependencies"):
+        if not self.has_attr("_dependencies"):
             self.Dependencies = []
 
         if isinstance(name, list):
@@ -150,19 +151,29 @@ class TOCFile:
             self.Dependencies.append(Dependency(name, required))
 
     def add_localized_title(self, locale: str, value: str):
-        if not self.has_attr("LocalizedTitles"):
+        if not self.has_attr("_localizedTitles"):
             self.LocalizedTitles = {}
 
         self.LocalizedTitles[locale] = value
 
     def add_additional_field(self, directive: str, value: Any):
-        if not self.has_attr("AdditionalFields"):
+        if not self.has_attr("_additionalFields"):
             self.AdditionalFields = {}
 
         self.AdditionalFields[directive] = value
 
     def add_file(self, file_name: str):
-        if not self.has_attr("Files"):
+        if not self.has_attr("_files"):
             self.Files = []
 
         self.Files.append(file_name)
+
+    def add_saved_variable(self, var_name: str, per_character: bool = False):
+        if not per_character:
+            if not self.has_attr("_savedVariables"):
+                self.SavedVariables = []
+            self.SavedVariables.append(var_name)
+        else:
+            if not self.has_attr("_savedVariablesPerCharacter"):
+                self.SavedVariablesPerCharacter = []
+            self.SavedVariablesPerCharacter.append(var_name)

@@ -8,7 +8,7 @@ PWD = os.path.dirname(os.path.realpath(__file__))
 
 def test_parser():
     file = TOCFile(f"{PWD}/testfile.toc")
-    assert file.Interface == ["100207", "110000"]
+    assert file.Interface == [100207, 110000]
     assert file.Title == "GhostTools"
     assert file.LocalizedTitles["frFR"] == "GhostToolsfrfr"
     assert (
@@ -91,7 +91,7 @@ def test_export():
 
 def test_read_export():
     toc = TOCFile(EXPORT_PATH)
-    assert toc.Interface == "110000"
+    assert toc.Interface == 110000
     assert toc.Author == "Ghost"
     assert toc.OnlyBetaAndPTR == True
     assert toc.DefaultState == True
