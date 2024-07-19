@@ -77,7 +77,8 @@ class TOCFile(TypedClass):
                     continue
 
                 if isinstance(data, list) and len(data) > 0:
-                    lines.append(f"## {directive}: " + ", ".join(data) + "\n")
+                    str_data = [str(v) for v in data]
+                    lines.append(f"## {directive}: " + ", ".join(str_data) + "\n")
                 else:
                     if directive == "DefaultState":
                         data = "enabled" if data else "disabled"
