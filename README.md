@@ -6,10 +6,10 @@ A Python package for parsing World of Warcraft TOC files used in addons.
 
 ## Installation
 
-You can install this package via `pip` by pointing it to this repository.
+You can install this package via `pip`.
 
 ```py
-pip install git+https://github.com/Ghostopheles/pytoc.git
+pip install wow-pytoc
 ```
 
 ## Usage
