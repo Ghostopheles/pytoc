@@ -97,7 +97,8 @@ class TOCFile(TypedClass):
         if not os.path.exists(file_path):
             raise FileNotFoundError("TOC file not found")
 
-        with open(file_path, "r") as f:
+        # toc files are utf-8 encoded
+        with open(file_path, "r", encoding="utf-8") as f:
             toc_file = f.read()
 
         for line in toc_file.splitlines():
