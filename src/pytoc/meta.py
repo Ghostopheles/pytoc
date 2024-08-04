@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union, get_origin, get_args, TYPE_CHECKING
+from typing import Any, Optional, Union, get_origin, get_args
 
 
 class TypedProperty:
@@ -96,4 +96,5 @@ class TypedMeta(type):
         return super().__new__(cls, name, bases, dct)
 
 
-class TypedClass(metaclass=TypedMeta): ...
+class TypedClass(metaclass=TypedMeta):
+    pass

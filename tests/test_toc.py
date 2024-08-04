@@ -50,7 +50,7 @@ def test_parser():
     assert file.LoadWith == None
     assert file.LoadManagers == None
     with pytest.raises(FileNotFoundError):
-        TOCFile("watch out! there's a ghost!")
+        TOCFile("bad/file/path")
 
     # dep name: required?
     expected_deps = {
@@ -85,7 +85,9 @@ def test_export():
     toc.OnlyBetaAndPTR = True
     toc.DefaultState = True
     toc.Files = ["file1.lua", "file2.xml"]
-    toc.export(EXPORT_PATH, True)
+
+    overwrite = True
+    toc.export(EXPORT_PATH, overwrite)
     assert os.path.exists(EXPORT_PATH)
 
 
