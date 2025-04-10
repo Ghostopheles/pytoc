@@ -24,6 +24,17 @@ def StringToBoolean(string: str, defaultReturn: bool = False):
     return defaultReturn
 
 
+# i don't like this, but this old code has forced my hand
+BOOLEAN_DIRECTIVES_LOWER = (
+    "defaultstate",
+    "onlybetaandptr",
+    "loadondemand",
+    "loadfirst",
+    "loadsavedvariablesfirst",
+    "usesecureenvironment",
+)
+
+
 @dataclass
 class Dependency:
     Name: str
@@ -40,6 +51,7 @@ class TOCFile(TypedClass):
     LocalizedTitles: Optional[dict[str, str]] = None
     SavedVariables: Optional[list[str]] = None
     SavedVariablesPerCharacter: Optional[list[str]] = None
+    SavedVariablesMachine: Optional[list[str]] = None
     IconTexture: Optional[str] = None
     IconAtlas: Optional[str] = None
     AddonCompartmentFunc: Optional[str] = None
@@ -47,11 +59,16 @@ class TOCFile(TypedClass):
     AddonCompartmentFuncOnLeave: Optional[str] = None
     LoadOnDemand: Optional[int] = None
     LoadWith: Optional[list[str]] = None
+    LoadFirst: Optional[bool] = False
     LoadManagers: Optional[list[str]] = None
     Dependencies: Optional[list[Dependency]] = None
     AdditionalFields: Optional[dict[str, Any]] = None
     DefaultState: Optional[bool] = False
     OnlyBetaAndPTR: Optional[bool] = False
+    LoadSavedVariablesFirst: Optional[bool] = False
+    AllowLoad: Optional[str] = None
+    AllowLoadGameType: Optional[str] = None
+    UseSecureEnvironment: Optional[bool] = False
 
     def __init__(self, file_path: Optional[str] = None):
         super().__init__()
@@ -153,7 +170,7 @@ class TOCFile(TypedClass):
         elif directive_lower == "optionaldeps":
             required = False
             self.add_dependency(value, required)
-        elif directive_lower in ("defaultstate", "onlybetaandptr"):
+        elif directive_lower in BOOLEAN_DIRECTIVES_LOWER:
             self.__setattr__(directive, StringToBoolean(value, False))
         else:
             self.__setattr__(directive, value)
