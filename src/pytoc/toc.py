@@ -63,15 +63,15 @@ class TOCFile(TypedClass):
     AddonCompartmentFuncOnLeave: Optional[str] = None
     LoadOnDemand: Optional[int] = None
     LoadWith: Optional[list[str]] = None
-    LoadFirst: Optional[bool] = False
+    LoadFirst: Optional[bool] = None
     LoadManagers: Optional[list[str]] = None
     Dependencies: Optional[list[Dependency]] = None
-    DefaultState: Optional[bool] = False
-    OnlyBetaAndPTR: Optional[bool] = False
-    LoadSavedVariablesFirst: Optional[bool] = False
+    DefaultState: Optional[bool] = None
+    OnlyBetaAndPTR: Optional[bool] = None
+    LoadSavedVariablesFirst: Optional[bool] = None
     AllowLoad: Optional[str] = None  # restricted to secure addons
     AllowLoadGameType: Optional[str] = None
-    UseSecureEnvironment: Optional[bool] = False  # restricted to secure addons
+    UseSecureEnvironment: Optional[bool] = None  # restricted to secure addons
     AdditionalFields: Optional[dict[str, Any]] = None  # this is a dict of x- fields
 
     def __init__(self, file_path: Optional[str] = None):
