@@ -58,7 +58,7 @@ toc.export(output, overwrite)
 For some examples, take a look at the [test_toc.py](tests/test_toc.py) file.
 
 ## Notes/Quirks
-> [!WARNING]
+> [!NOTE]
 > - All dependency fields will be added to the `TOCFile.Dependencies` list. 
 > - Non-standard directives (that don't start with `X-`) will be added directly to the `TOCFile` object, but will **not** be exported.
 > - Fields will overwrite eachother if more than one of that directive is present in the TOC file, taking the last found value.
