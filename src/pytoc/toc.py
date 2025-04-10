@@ -140,7 +140,7 @@ class TOCFile(TypedClass):
             toc_file = f.read()
 
         for line in toc_file.splitlines():
-            if line.startswith("##"):
+            if line.startswith("##") and ":" in line:
                 # this line is a directive
                 line = line.replace("## ", "", 1)
                 line = line.lstrip()
