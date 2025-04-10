@@ -118,10 +118,9 @@ class TOCFile(TypedClass):
                     str_data = [str(v) for v in data]
                     lines.append(f"## {directive}: " + ", ".join(str_data) + "\n")
                 else:
-                    if directive == "DefaultState":
-                        data = "enabled" if data else "disabled"
-                    elif directive == "OnlyBetaAndPTR":
-                        data = 1 if data else 0
+                    if directive.lower() in BOOLEAN_DIRECTIVES_LOWER:
+                        # convert our boolean directive to a 1 or 0
+                        data = "1" if data else "0"
 
                     lines.append(f"## {directive}: {data}\n")
 
