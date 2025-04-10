@@ -5,6 +5,24 @@ from typing import Any, Optional, Union
 
 from .meta import TypedClass
 
+FALSEY_CHARS = ("0", "n", "f")
+FALSEY_STRINGS = ("off", "disabled")
+TRUTHY_CHARS = ("1", "2", "3", "4", "5", "6", "7", "8", "9", "y", "t")
+TRUTHY_STRINGS = ("on", "enabled")
+
+
+# this function is terrible, but it supports legacy slash commands
+def StringToBoolean(string: str, defaultReturn: bool = False):
+    string = string.lower()
+    firstChar = string[0]
+
+    if firstChar in FALSEY_CHARS or string in FALSEY_STRINGS:
+        return False
+    elif firstChar in TRUTHY_CHARS or string in TRUTHY_STRINGS:
+        return True
+
+    return defaultReturn
+
 
 @dataclass
 class Dependency:
@@ -135,10 +153,8 @@ class TOCFile(TypedClass):
         elif directive_lower == "optionaldeps":
             required = False
             self.add_dependency(value, required)
-        elif directive_lower == "defaultstate":
-            self.__setattr__(directive, True if value == "enabled" else "disabled")
-        elif directive_lower == "onlybetaandptr":
-            self.__setattr__(directive, True if value == "1" else False)
+        elif directive_lower in ("defaultstate", "onlybetaandptr"):
+            self.__setattr__(directive, StringToBoolean(value, False))
         else:
             self.__setattr__(directive, value)
 
