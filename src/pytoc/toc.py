@@ -5,6 +5,7 @@ from typing import Any, Optional, Union
 
 from .meta import TypedClass
 
+# characters/strings that are interpreted as falsey/truthy according to the WoW client
 FALSEY_CHARS = ("0", "n", "f")
 FALSEY_STRINGS = ("off", "disabled")
 TRUTHY_CHARS = ("1", "2", "3", "4", "5", "6", "7", "8", "9", "y", "t")
@@ -54,7 +55,7 @@ class TOCFile(TypedClass):
     LocalizedTitles: Optional[dict[str, str]] = None
     SavedVariables: Optional[list[str]] = None
     SavedVariablesPerCharacter: Optional[list[str]] = None
-    SavedVariablesMachine: Optional[list[str]] = None
+    SavedVariablesMachine: Optional[list[str]] = None  # restricted to secure addons
     IconTexture: Optional[str] = None
     IconAtlas: Optional[str] = None
     AddonCompartmentFunc: Optional[str] = None
@@ -65,13 +66,13 @@ class TOCFile(TypedClass):
     LoadFirst: Optional[bool] = False
     LoadManagers: Optional[list[str]] = None
     Dependencies: Optional[list[Dependency]] = None
-    AdditionalFields: Optional[dict[str, Any]] = None
     DefaultState: Optional[bool] = False
     OnlyBetaAndPTR: Optional[bool] = False
     LoadSavedVariablesFirst: Optional[bool] = False
-    AllowLoad: Optional[str] = None
+    AllowLoad: Optional[str] = None  # restricted to secure addons
     AllowLoadGameType: Optional[str] = None
-    UseSecureEnvironment: Optional[bool] = False
+    UseSecureEnvironment: Optional[bool] = False  # restricted to secure addons
+    AdditionalFields: Optional[dict[str, Any]] = None  # this is a dict of x- fields
 
     def __init__(self, file_path: Optional[str] = None):
         super().__init__()
@@ -134,13 +135,13 @@ class TOCFile(TypedClass):
         if not os.path.exists(file_path):
             raise FileNotFoundError("TOC file not found")
 
-        # toc files are utf-8 encoded
+        # toc files should be utf-8 encoded
         with open(file_path, "r", encoding="utf-8") as f:
             toc_file = f.read()
 
         for line in toc_file.splitlines():
             if line.startswith("##"):
-                # line is a directive
+                # this line is a directive
                 line = line.replace("## ", "", 1)
                 line = line.lstrip()
                 line_split = line.split(":", 1)
@@ -150,6 +151,7 @@ class TOCFile(TypedClass):
                     value = value.split(",")
                     value = [v.lstrip() for v in value]
             elif not line.startswith("#") and line != "":
+                # this line is not a directive, nor a comment, so it must be a file path
                 self.add_file(line)
                 continue
             else:
