@@ -38,6 +38,12 @@ BOOLEAN_DIRECTIVES_LOWER = (
     "usesecureenvironment",
 )
 
+SAVEDVARIABLES_DIRECTIVES_LOWER = (
+    "savedvariables",
+    "savedvariablespercharacter",
+    "savedvariablesmachine",
+)
+
 
 @dataclass
 class Dependency:
@@ -176,6 +182,8 @@ class TOCFile(TypedClass):
             self.add_dependency(value, required)
         elif directive_lower in BOOLEAN_DIRECTIVES_LOWER:
             self.__setattr__(directive, StringToBoolean(value, False))
+        elif directive_lower in SAVEDVARIABLES_DIRECTIVES_LOWER:
+            self.add_saved_variable(directive, value)
         else:
             self.__setattr__(directive, value)
 
@@ -207,12 +215,7 @@ class TOCFile(TypedClass):
 
         self.Files.append(file_name)
 
-    def add_saved_variable(self, var_name: str, per_character: bool = False):
-        if not per_character:
-            if not self.has_attr("_savedVariables"):
-                self.SavedVariables = []
-            self.SavedVariables.append(var_name)
-        else:
-            if not self.has_attr("_savedVariablesPerCharacter"):
-                self.SavedVariablesPerCharacter = []
-            self.SavedVariablesPerCharacter.append(var_name)
+    def add_saved_variable(self, directive: str, value: Union[str, list[str]]):
+        if isinstance(value, str):
+            value = [value]
+        setattr(self, directive, value)
