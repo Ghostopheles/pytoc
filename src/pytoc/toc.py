@@ -58,7 +58,10 @@ class TOCFile(TypedClass):
     Version: Optional[str] = None
     Files: Optional[list[str]] = None
     Notes: Optional[str] = None
-    LocalizedTitles: Optional[dict[str, str]] = None
+    Group: Optional[str] = None
+    Category: Optional[str] = None
+    LocalizedCategory: Optional[dict[str, str]] = None
+    LocalizedTitle: Optional[dict[str, str]] = None
     SavedVariables: Optional[list[str]] = None
     SavedVariablesPerCharacter: Optional[list[str]] = None
     SavedVariablesMachine: Optional[list[str]] = None  # restricted to secure addons
@@ -170,10 +173,11 @@ class TOCFile(TypedClass):
         directive_lower = directive.lower()
         if directive_lower.startswith("x-"):
             self.add_additional_field(directive, value)
-        elif directive_lower.startswith("title-"):
+        elif "-" in directive_lower:
             split = directive.split("-", 1)
+            directive = split[0]
             locale = split[1]
-            self.add_localized_title(locale, value)
+            self.add_localized_directive(directive, value, locale)
         elif directive_lower.startswith("dep") or directive_lower == "requireddeps":
             required = True
             self.add_dependency(value, required)
@@ -197,11 +201,28 @@ class TOCFile(TypedClass):
         else:
             self.Dependencies.append(Dependency(name, required))
 
-    def add_localized_title(self, locale: str, value: str):
-        if not self.has_attr("_localizedTitles"):
-            self.LocalizedTitles = {}
+    def add_localized_directive(self, directive: str, value: str, locale: str):
+        # localized directive will be accessible via the `.Localized<directive>` attribute
+        # currently this only supports the localized directives that are annotated on this class :(
+        # (this means ONLY LocalizedTitle and LocalizedCategory)
+        # TODO: fix this terribleness
 
-        self.LocalizedTitles[locale] = value
+        # hack check to prevent weirdo errors
+        if directive not in ("Title", "Category"):
+            raise ValueError(
+                f"Localized directives are only supported for Title and Category, not {directive}"
+            )
+
+        internal_attr_name = "_localized" + directive.lower()
+        if not self.has_attr(internal_attr_name):
+            localized_dict = {}
+        else:
+            localized_dict = getattr(self, internal_attr_name)
+
+        localized_dict[locale] = value
+
+        attr_name = f"Localized{directive}"
+        setattr(self, attr_name, localized_dict)
 
     def add_additional_field(self, directive: str, value: Any):
         if not self.has_attr("_additionalFields"):

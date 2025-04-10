@@ -1,6 +1,7 @@
 ## Interface: 110000, 110105, 11507, 30404, 40402, 50500
 ## Title: GhostTools
-## Title-frFR: GhostToolsfrfr
+## Title-frFR: GrasTools
+## Title-deDE: DieGeistTools
 ## Notes: A collection of cadaverous tools for the discerning necromancer.
 ## Author: Ghost
 ## Version: 1
@@ -22,6 +23,21 @@
 ## AddonCompartmentFunc: GHOST_OnAddonCompartmentClick
 ## AddonCompartmentFuncOnEnter: GHOST_OnAddonCompartmentEnter
 ## AddonCompartmentFuncOnLeave: GHOST_OnAddonCompartmentLeave
+
+## Group: GhostTools
+
+## Category: Roleplay
+## Category-enUS: Roleplay
+## Category-deDE: Rollenspiel
+## Category-esES: Juego de rol
+## Category-esMX: Juego de rol
+## Category-frFR: Jeu de rôle
+## Category-itIT: Gioco di Ruolo
+## Category-koKR: 롤플레잉
+## Category-ptBR: Interpretação de Papel
+## Category-ruRU: Ролевая игра
+## Category-zhCN: 角色扮演
+## Category-zhTW: 角色扮演
 
 ## X-Website: https://ghst.tools
 

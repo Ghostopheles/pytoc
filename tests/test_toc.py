@@ -10,7 +10,8 @@ def test_parser():
     file = TOCFile(f"{PWD}/testfile.toc")
     assert file.Interface == [110000, 110105, 11507, 30404, 40402, 50500]
     assert file.Title == "GhostTools"
-    assert file.LocalizedTitles["frFR"] == "GhostToolsfrfr"
+    assert file.LocalizedTitle["frFR"] == "GrasTools"
+    assert file.LocalizedTitle["deDE"] == "DieGeistTools"
     assert (
         file.Notes == "A collection of cadaverous tools for the discerning necromancer."
     )
@@ -80,6 +81,21 @@ def test_parser():
     assert len(expected_deps) == 0
 
     assert file.UseSecureEnvironment == True
+
+    assert file.Group == "GhostTools"
+
+    assert file.Category == "Roleplay"
+    assert file.LocalizedCategory["enUS"] == "Roleplay"
+    assert file.LocalizedCategory["deDE"] == "Rollenspiel"
+    assert file.LocalizedCategory["esES"] == "Juego de rol"
+    assert file.LocalizedCategory["esMX"] == "Juego de rol"
+    assert file.LocalizedCategory["frFR"] == "Jeu de rôle"
+    assert file.LocalizedCategory["itIT"] == "Gioco di Ruolo"
+    assert file.LocalizedCategory["koKR"] == "롤플레잉"
+    assert file.LocalizedCategory["ptBR"] == "Interpretação de Papel"
+    assert file.LocalizedCategory["ruRU"] == "Ролевая игра"
+    assert file.LocalizedCategory["zhCN"] == "角色扮演"
+    assert file.LocalizedCategory["zhTW"] == "角色扮演"
 
 
 EXPORT_PATH = os.path.join(
