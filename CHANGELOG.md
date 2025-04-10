@@ -28,4 +28,3 @@
 
 ## Known Issues
 - Attempting to parse a TOC file containing localized directives that are not `Title` or `Category` will result in an error being thrown. The current system for handling localization is a disaster and needs to be rewritten to fix this.
-- Attempting to export a TOC file with localized directives might result in calamity.

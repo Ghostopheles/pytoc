@@ -119,6 +119,14 @@ class TOCFile(TypedClass):
 
                 if len(optional) > 0:
                     lines.append("## OptionalDeps: " + ", ".join(optional) + "\n")
+            elif "Localized" in directive:
+                real_directive = directive.replace("Localized", "", 1)
+                localized_dict = getattr(self, directive)
+                if localized_dict is None or len(localized_dict) == 0:
+                    continue
+
+                for locale, value in localized_dict.items():
+                    lines.append(f"## {real_directive}-{locale}: {value}\n")
             else:
                 data = self.__getattribute__(directive)
                 if data is None:
@@ -137,7 +145,7 @@ class TOCFile(TypedClass):
         lines.append("\n")
         lines.extend(files)
 
-        with open(file_path, "w") as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.writelines(lines)
 
     def parse_toc_file(self, file_path: str):

@@ -107,6 +107,21 @@ def test_export():
     toc = TOCFile()
     toc.Interface = "110000"
     toc.Author = "Ghost"
+    toc.Title = "GhostTools"
+    toc.LocalizedTitle = {"frFR": "GrasTools", "deDE": "DieGeistTools"}
+    toc.Category = "Roleplay"
+    toc.LocalizedCategory = {
+        "frFR": "Jeu de rôle",
+        "deDE": "Rollenspiel",
+        "esES": "Juego de rol",
+        "esMX": "Juego de rol",
+        "itIT": "Gioco di Ruolo",
+        "koKR": "롤플레잉",
+        "ptBR": "Interpretação de Papel",
+        "ruRU": "Ролевая игра",
+        "zhCN": "角色扮演",
+        "zhTW": "角色扮演",
+    }
     toc.OnlyBetaAndPTR = True
     toc.DefaultState = True
     toc.Files = ["file1.lua", "file2.xml"]
@@ -120,6 +135,20 @@ def test_read_export():
     toc = TOCFile(EXPORT_PATH)
     assert toc.Interface == 110000
     assert toc.Author == "Ghost"
+    assert toc.Title == "GhostTools"
+    assert toc.LocalizedTitle["frFR"] == "GrasTools"
+    assert toc.LocalizedTitle["deDE"] == "DieGeistTools"
+    assert toc.Category == "Roleplay"
+    assert toc.LocalizedCategory["deDE"] == "Rollenspiel"
+    assert toc.LocalizedCategory["esES"] == "Juego de rol"
+    assert toc.LocalizedCategory["esMX"] == "Juego de rol"
+    assert toc.LocalizedCategory["frFR"] == "Jeu de rôle"
+    assert toc.LocalizedCategory["itIT"] == "Gioco di Ruolo"
+    assert toc.LocalizedCategory["koKR"] == "롤플레잉"
+    assert toc.LocalizedCategory["ptBR"] == "Interpretação de Papel"
+    assert toc.LocalizedCategory["ruRU"] == "Ролевая игра"
+    assert toc.LocalizedCategory["zhCN"] == "角色扮演"
+    assert toc.LocalizedCategory["zhTW"] == "角色扮演"
     assert toc.OnlyBetaAndPTR == True
     assert toc.DefaultState == True
     assert toc.Files == ["file1.lua", "file2.xml"]
