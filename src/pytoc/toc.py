@@ -13,6 +13,9 @@ TRUTHY_STRINGS = ("on", "enabled")
 
 # this function is terrible, but it supports legacy slash commands
 def StringToBoolean(string: str, defaultReturn: bool = False):
+    if len(string) == 0:
+        return defaultReturn
+
     string = string.lower()
     firstChar = string[0]
 
