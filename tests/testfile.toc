@@ -1,4 +1,4 @@
-## Interface: 100207, 110000
+## Interface: 110000, 110105, 11507, 30404, 40402, 50500
 ## Title: GhostTools
 ## Title-frFR: GhostToolsfrfr
 ## Notes: A collection of cadaverous tools for the discerning necromancer.
@@ -7,6 +7,9 @@
 ## Bad: bad:data : ## # ###
 ## SavedVariables: GhostConfig, GhostData, GhostScanData, GhostSavedProfile
 ## SavedVariablesPerCharacter: GhostEventLog
+## SavedVariablesMachine: GhostWumbo
+
+## UseSecureEnvironment: 1
 
 ## RequiredDeps: Blackjack
 ## Dep: Graveyard
@@ -14,6 +17,7 @@
 ## OptionalDeps: totalRP3, KethoDoc, LibAdvFlight-1.0, LibSmokeSignal-1.0, BugGrabber, Warmup
 
 ## IconTexture: Interface/AddOns/totalRP3/Resources/policegar
+## IconAtlas: ui-debug-tool-icon-large
 
 ## AddonCompartmentFunc: GHOST_OnAddonCompartmentClick
 ## AddonCompartmentFuncOnEnter: GHOST_OnAddonCompartmentEnter
@@ -41,3 +45,11 @@ Core/SlashCommands.lua
 Core/Macros.lua
 Core/Coroutines.lua
 Core/Mixins.lua
+
+# do it for the family
+[Family]/FamilyFile.lua
+
+# do it for the game
+[Game]/UIKerning.lua
+
+ClassicOnly.lua [AllowLoadGameType classic]

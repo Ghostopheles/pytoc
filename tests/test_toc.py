@@ -8,7 +8,7 @@ PWD = os.path.dirname(os.path.realpath(__file__))
 
 def test_parser():
     file = TOCFile(f"{PWD}/testfile.toc")
-    assert file.Interface == [100207, 110000]
+    assert file.Interface == [110000, 110105, 11507, 30404, 40402, 50500]
     assert file.Title == "GhostTools"
     assert file.LocalizedTitles["frFR"] == "GhostToolsfrfr"
     assert (
@@ -21,7 +21,10 @@ def test_parser():
         "GhostScanData",
         "GhostSavedProfile",
     ]
+    assert file.SavedVariablesPerCharacter == ["GhostEventLog"]
+    assert file.SavedVariablesMachine == ["GhostWumbo"]
     assert file.IconTexture == "Interface/AddOns/totalRP3/Resources/policegar"
+    assert file.IconAtlas == "ui-debug-tool-icon-large"
     assert file.AddonCompartmentFunc == "GHOST_OnAddonCompartmentClick"
     assert file.AddonCompartmentFuncOnEnter == "GHOST_OnAddonCompartmentEnter"
     assert file.AddonCompartmentFuncOnLeave == "GHOST_OnAddonCompartmentLeave"
@@ -44,11 +47,15 @@ def test_parser():
         "Core/Macros.lua",
         "Core/Coroutines.lua",
         "Core/Mixins.lua",
+        "[Family]/FamilyFile.lua",
+        "[Game]/UIKerning.lua",
+        "ClassicOnly.lua [AllowLoadGameType classic]",
     ]
-    assert file.DefaultState == False
-    assert file.OnlyBetaAndPTR == False
+    assert file.DefaultState == None
+    assert file.OnlyBetaAndPTR == None
     assert file.LoadWith == None
     assert file.LoadManagers == None
+    assert file.LoadFirst == None
     with pytest.raises(FileNotFoundError):
         TOCFile("bad/file/path")
 
@@ -71,6 +78,8 @@ def test_parser():
             expected_deps.pop(dep.Name)
 
     assert len(expected_deps) == 0
+
+    assert file.UseSecureEnvironment == True
 
 
 EXPORT_PATH = os.path.join(
