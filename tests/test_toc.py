@@ -28,7 +28,7 @@ def test_parser():
 	assert file.AddonCompartmentFuncOnEnter == "GHOST_OnAddonCompartmentEnter"
 	assert file.AddonCompartmentFuncOnLeave == "GHOST_OnAddonCompartmentLeave"
 	assert file.AdditionalFields["X-Website"] == "https://ghst.tools"
-	assert file.Files == [
+	assert file.get_raw_files() == [
 		"Libs/LibStub/LibStub.lua",
 		"Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml",
 		"Libs/LibDataBroker-1.1/LibDataBroker-1.1.lua",
@@ -147,4 +147,4 @@ def test_read_export():
 	assert toc.LocalizedCategory["zhTW"] == "角色扮演"
 	assert toc.OnlyBetaAndPTR == True
 	assert toc.DefaultState == True
-	assert toc.Files == ["file1.lua", "file2.xml"]
+	assert toc.get_raw_files() == ["file1.lua", "file2.xml"]

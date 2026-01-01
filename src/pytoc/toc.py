@@ -1,9 +1,16 @@
-import os
+import re
 
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Any, Optional, Union
 
+from .enums import *
 from .meta import TypedClass
+from .file_entry import *
+
+DO_NOT_EXPORT_FIELDS = {"ClientType"}
+
+CONDITION_VARIABLE_PATTERN = re.compile(r"\[([^\]]+)\]")
 
 # characters/strings that are interpreted as falsey/truthy according to the WoW client
 FALSEY_CHARS = ("0", "n", "f")
@@ -29,20 +36,15 @@ def StringToBoolean(string: str, defaultReturn: bool = False):
 
 
 # i don't like this, but this old code has forced my hand
-BOOLEAN_DIRECTIVES_LOWER = (
-	"defaultstate",
-	"onlybetaandptr",
-	"loadondemand",
-	"loadfirst",
-	"loadsavedvariablesfirst",
-	"usesecureenvironment",
-)
-
-SAVEDVARIABLES_DIRECTIVES_LOWER = (
-	"savedvariables",
-	"savedvariablespercharacter",
-	"savedvariablesmachine",
-)
+BOOLEAN_DIRECTIVES_LOWER = ("defaultstate", "onlybetaandptr", "loadondemand", "loadfirst", "loadsavedvariablesfirst", "usesecureenvironment")
+SAVEDVARIABLES_DIRECTIVES_LOWER = ("savedvariables", "savedvariablespercharacter", "savedvariablesmachine")
+CONDITION_DIRECTIVES_LOWER = ("allowload", "allowloadgametype", "allowloadenvironment", "allowloadtextlocale")
+CONDITION_DIRECTIVES_TO_CLASS = {
+	"AllowLoad": TOCAllowLoad,
+	"AllowLoadGameType": TOCAllowLoadGameType,
+	"AllowLoadEnvironment": TOCAllowLoadEnvironment,
+	"AllowLoadTextLocale": TOCAllowLoadTextLocale,
+}
 
 
 @dataclass
@@ -52,11 +54,12 @@ class Dependency:
 
 
 class TOCFile(TypedClass):
+	ClientType: Optional[TOCGameType] = None  # target client for client-specific TOC files. i.e. MyAddon_Standard.toc
 	Interface: Optional[Union[int, list[int]]] = None
 	Title: Optional[str] = None
 	Author: Optional[str] = None
 	Version: Optional[str] = None
-	Files: Optional[list[str]] = None
+	Files: Optional[list[TOCFileEntry]] = None
 	Notes: Optional[str] = None
 	Group: Optional[str] = None
 	Category: Optional[str] = None
@@ -78,32 +81,53 @@ class TOCFile(TypedClass):
 	DefaultState: Optional[bool] = None
 	OnlyBetaAndPTR: Optional[bool] = None
 	LoadSavedVariablesFirst: Optional[bool] = None
-	AllowLoad: Optional[str] = None  # restricted to secure addons
-	AllowLoadGameType: Optional[str] = None
+	AllowLoad: Optional[TOCAllowLoad] = None  # only useful to secure addons
+	AllowLoadGameType: Optional[TOCAllowLoadGameType] = None
+	AllowLoadTextLocale: Optional[TOCAllowLoadTextLocale] = None
+	AllowLoadEnvironment: Optional[TOCAllowLoadEnvironment] = None
 	UseSecureEnvironment: Optional[bool] = None  # restricted to secure addons
 	AdditionalFields: Optional[dict[str, Any]] = None  # this is a dict of x- fields
 
-	def __init__(self, file_path: Optional[str] = None):
+	def __init__(self, file_path: Optional[Union[Path, str]] = None):
 		super().__init__()
 		if file_path is not None:
+			if not isinstance(file_path, Path):
+				file_path = Path(file_path)
+
 			self.parse_toc_file(file_path)
 
 	def has_attr(self, attr: str) -> bool:
 		return attr in self.__dict__
 
+	def get_target_client_from_path(self, file_path: Path) -> Optional[TOCGameType]:
+		str_path = str(file_path)
+		if not "_" in str_path:
+			return None
+
+		path_split = str_path.split("_")
+		suffix = path_split[-1].removesuffix(".toc")
+		if suffix.lower() in TOCGameType:
+			return TOCGameType[suffix.title()]
+
+		return None
+
 	def export(self, file_path: str, overwrite: bool = False):
-		if os.path.exists(file_path) and not overwrite:
+		file_path = Path(file_path)
+		if file_path.exists() and not overwrite:
 			raise FileExistsError("Destination file already exists. To overwrite, set overwrite=True")
 
 		lines = []
 		files = []
 		for directive in self.__annotations__:
+			if directive in DO_NOT_EXPORT_FIELDS:
+				continue
+
 			if directive == "Files":
 				_files = self.Files
 				if _files is None or len(_files) == 0:
 					continue
 
-				files.append("\n".join(_files))
+				files.append("\n".join([f.export() for f in _files]))
 			elif directive == "Dependencies":
 				deps = self.Dependencies
 				if deps is None or len(deps) == 0:
@@ -130,11 +154,14 @@ class TOCFile(TypedClass):
 				if data is None:
 					continue
 
-				if isinstance(data, list) and len(data) > 0:
+				if isinstance(data, TOCCondition):
+					lines.append(f"## {directive}: {', '.join(data.AllowedValues)}\n")
+				elif isinstance(data, list) and len(data) > 0:
 					str_data = [str(v) for v in data]
 					lines.append(f"## {directive}: " + ", ".join(str_data) + "\n")
 				else:
-					if directive.lower() in BOOLEAN_DIRECTIVES_LOWER:
+					directive_lower = directive.lower()
+					if directive_lower in BOOLEAN_DIRECTIVES_LOWER:
 						# convert our boolean directive to a 1 or 0
 						data = "1" if data else "0"
 
@@ -146,9 +173,11 @@ class TOCFile(TypedClass):
 		with open(file_path, "w", encoding="utf-8") as f:
 			f.writelines(lines)
 
-	def parse_toc_file(self, file_path: str):
-		if not os.path.exists(file_path):
+	def parse_toc_file(self, file_path: Path):
+		if not file_path.exists():
 			raise FileNotFoundError("TOC file not found")
+
+		self.ClientType = self.get_target_client_from_path(file_path)
 
 		# toc files should be utf-8 encoded
 		with open(file_path, "r", encoding="utf-8") as f:
@@ -194,6 +223,8 @@ class TOCFile(TypedClass):
 			self.__setattr__(directive, StringToBoolean(value, False))
 		elif directive_lower in SAVEDVARIABLES_DIRECTIVES_LOWER:
 			self.add_saved_variable(directive, value)
+		elif directive_lower in CONDITION_DIRECTIVES_LOWER:
+			self.add_conditional_field(directive, value)
 		else:
 			self.__setattr__(directive, value)
 
@@ -234,13 +265,74 @@ class TOCFile(TypedClass):
 
 		self.AdditionalFields[directive] = value
 
+	def split_file_path_and_conditions(self, line: str) -> tuple[str, list[str]]:
+		line = line.strip()
+		depth = 0
+
+		for i, char in enumerate(line):
+			if char == "[":
+				depth += 1
+			elif char == "]":
+				depth -= 1
+			elif char.isspace() and depth == 0:
+				path = line[:i]
+				rest = line[i:].strip()
+				return path, CONDITION_VARIABLE_PATTERN.findall(rest)
+
+		return line, []
+
+	def parse_condition(self, text: str) -> Optional[TOCCondition]:
+		name, *rest = text.split(None, 1)
+		args = []
+
+		if rest:
+			args = [a.strip() for a in rest[0].split(",")]
+
+		condition_class = CONDITION_DIRECTIVES_TO_CLASS.get(name)
+
+		if condition_class:
+			return condition_class(frozenset(args))
+
+		return None
+
+	def parse_file_line(self, line: str):
+		raw_path, condition_texts = self.split_file_path_and_conditions(line)
+
+		conditions = [self.parse_condition(text) for text in condition_texts]
+
+		if not conditions:
+			return TOCFileEntry(raw_path)
+
+		return TOCFileEntry(raw_path, conditions)
+
 	def add_file(self, file_name: str):
 		if not self.has_attr("_files"):
 			self.Files = []
 
-		self.Files.append(file_name)
+		file_entry = self.parse_file_line(file_name)
+		self.Files.append(file_entry)
 
 	def add_saved_variable(self, directive: str, value: Union[str, list[str]]):
 		if isinstance(value, str):
 			value = [value]
 		setattr(self, directive, value)
+
+	def add_conditional_field(self, directive: str, value: Union[str, list[str]]):
+		if isinstance(value, str):
+			value = [value]
+
+		try:
+			directive_class = CONDITION_DIRECTIVES_TO_CLASS[directive]({*value})
+		except KeyError:
+			raise KeyError(f"Unknown conditional directive: {directive}")
+
+		setattr(self, directive, directive_class)
+
+	def get_raw_files(self) -> list[str]:
+		"""Returns a list of raw file paths. (no variable or conditional parsing done)"""
+
+		raw_files = []
+		for file in self.Files:
+			raw_files.append(file.export())
+
+		return raw_files

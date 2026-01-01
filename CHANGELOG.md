@@ -1,3 +1,16 @@
+# 0.7.0
+> [!WARNING]
+> ⚠️ This release contains a minimum Python version bump to 3.12 ⚠️
+
+### Added
+- Added support for the new (not new) TOC variables and conditionals
+- Added support for client-specific TOC files based on the file name
+    - You can find this value, if specified, in the `TOCFile.ClientType` attribute. This attribute does not get exported
+
+### Changed
+- Migrated project management to `uv`
+- Bumped minimum required Python version to 3.12
+
 # 0.6.0
 > [!WARNING]
 > This release contains breaking changes, marked with ⚠️.

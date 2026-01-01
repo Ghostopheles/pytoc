@@ -2,13 +2,13 @@
 
 # pytoc
 
-A Python package for parsing World of Warcraft addon TOC files.
+A Python package for reading and writing World of Warcraft addon [TOC](https://warcraft.wiki.gg/wiki/TOC_format) files.
 
 ## Installation
 
 You can install this package via `pip`.
 
-```py
+```
 pip install wow-pytoc
 ```
 

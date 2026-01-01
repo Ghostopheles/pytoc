@@ -33,6 +33,9 @@ class TypedProperty:
 		origin = get_origin(t)
 		args = get_args(t)
 		if origin is None:
+			if isinstance(value, t):
+				return value
+
 			return t(value)
 		if origin is Union:
 			for t in get_args(t):
