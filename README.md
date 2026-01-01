@@ -31,6 +31,7 @@ for file in toc.Files:
     print(file)
     if file.Conditions:
         for condition in file.Conditions:
+            print(condition.export())
 
 for dep in toc.Dependencies
     dep: TOCDependency
