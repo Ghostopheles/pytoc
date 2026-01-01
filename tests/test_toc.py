@@ -152,6 +152,28 @@ def test_read_export():
 	assert toc.get_raw_files() == ["file1.lua", "file2.xml"]
 
 
+def test_addon_loading():
+	ctx = TOCEvaluationContext(TOCGameType.Wowhack, TOCEnvironment.Global, TOCTextLocale.enUS)
+	assert ctx.LoadedAddons == {}
+
+	addon_name = "Dragon"
+	assert not ctx.is_addon_loaded(addon_name)
+
+	ctx.load_addon(addon_name)
+	assert ctx.is_addon_loaded(addon_name)
+
+	ctx.unload_addon(addon_name)
+	assert not ctx.is_addon_loaded(addon_name)
+
+
+def test_ctx_family():
+	ctx = TOCEvaluationContext(TOCGameType.Wowhack, TOCEnvironment.Global, TOCTextLocale.enUS)
+	assert ctx.Family == TOCFamily.Mainline
+
+	ctx.GameType = TOCGameType.Mists
+	assert ctx.Family == TOCFamily.Classic
+
+
 def discover_toc_files(path: Path) -> list[Path]:
 	toc_files = []
 	for root, _, files in path.walk():
@@ -255,17 +277,3 @@ def test_textlocale_file_entry():
 	assert file.resolve_path(ctx) == f"{TOCTextLocale.enUS}/Dragon.lua"
 	assert file.should_load(ctx)
 	assert file.export() == path
-
-
-def test_addon_loading():
-	ctx = TOCEvaluationContext(TOCGameType.Wowhack, TOCEnvironment.Global, TOCTextLocale.enUS)
-	assert ctx.LoadedAddons == {}
-
-	addon_name = "Dragon"
-	assert not ctx.is_addon_loaded(addon_name)
-
-	ctx.load_addon(addon_name)
-	assert ctx.is_addon_loaded(addon_name)
-
-	ctx.unload_addon(addon_name)
-	assert not ctx.is_addon_loaded(addon_name)
