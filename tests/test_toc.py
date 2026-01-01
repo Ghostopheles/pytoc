@@ -168,8 +168,7 @@ def test_blizzard_ui_conformance():
 	if not ui_source_path.exists():
 		ui_source_path = Path(os.getenv("WOW_UI_SOURCE_PATH")) / "Interface"
 
-	if not ui_source_path.exists():
-		return
+	assert ui_source_path.exists(), "Unable to find UI source path"
 
 	failures = []
 
