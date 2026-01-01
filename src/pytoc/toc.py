@@ -113,7 +113,8 @@ class TOCFile(TypedClass):
 		return None
 
 	def export(self, file_path: str, overwrite: bool = False):
-		if os.path.exists(file_path) and not overwrite:
+		file_path = Path(file_path)
+		if file_path.exists() and not overwrite:
 			raise FileExistsError("Destination file already exists. To overwrite, set overwrite=True")
 
 		lines = []
