@@ -1,6 +1,6 @@
 [project]
 name = "wow-pytoc"
-version = "0.6.0"
+version = "0.7.0"
 description = "A package for reading and writing World of Warcraft addon TOC files."
 authors = [
     { name="Ghostopheles", email="ghost@ghst.tools"}
@@ -17,7 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
 ]
-requires-python = ">= 3.8"
+requires-python = ">= 3.12"
 
 [project.urls]
 Homepage = "https://github.com/Ghostopheles/pytoc"
@@ -25,12 +25,50 @@ Repository = "https://github.com/Ghostopheles/pytoc.git"
 Issues = "https://github.com/Ghostopheles/pytoc/issues"
 Changelog = "https://github.com/Ghostopheles/pytoc/blob/master/CHANGELOG.md"
 
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.10",
+]
+
 [build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.9.21"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "pytoc"
 
 [tool.pytest.ini_options]
 addopts = "--cov=pytoc"
 testpaths = [
     "tests",
 ]
+
+[tool.ruff]
+exclude = [
+    "__init__.py",
+    ".venv/*",
+    ".git",
+    ".github",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".vscode",
+    ".ruff_cache",
+    "build",
+    "dist",
+    "site-packages",
+    "venv",
+    "pyproject.toml"
+]
+line-length = 160
+indent-width = 4
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82"]
+fixable = ["ALL"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "tab"
+line-ending = "auto"
