@@ -80,19 +80,6 @@ _TOC_VAR_PATTERN = re.compile(r"\[([A-Za-z0-9_]+)\]")
 _TOC_DEFAULT_VARIABLES = {"family": lambda ctx: ctx.Family, "game": lambda ctx: ctx.GameType, "textlocale": lambda ctx: ctx.TextLocale}
 
 
-@dataclass
-class TOCVariableResolver:
-	def expand(self, path: str, ctx: TOCEvaluationContext) -> str:
-		def replace(match: re.Match):
-			name = match.group(1)
-			try:
-				return _TOC_DEFAULT_VARIABLES[name.lower()](ctx)
-			except KeyError:
-				raise KeyError(f"Undefined TOC variable: {name}")
-
-		return _TOC_VAR_PATTERN.sub(replace, path)
-
-
 @dataclass(frozen=True)
 class TOCFileEntry:
 	"""A file found in the 'files' section of a TOC file. This represents the .lua and .xml files."""
@@ -103,8 +90,15 @@ class TOCFileEntry:
 	def __str__(self):
 		return self.RawFilePath
 
-	def resolve_path(self, resolver: TOCVariableResolver, ctx: TOCEvaluationContext) -> str:
-		return resolver.expand(self.RawFilePath, ctx)
+	def resolve_path(self, ctx: TOCEvaluationContext) -> str:
+		def replace(match: re.Match):
+			name = match.group(1)
+			try:
+				return _TOC_DEFAULT_VARIABLES[name.lower()](ctx)
+			except KeyError:
+				raise KeyError(f"Undefined file path variable: {name}")
+
+		return _TOC_VAR_PATTERN.sub(replace, self.RawFilePath)
 
 	def should_load(self, ctx: TOCEvaluationContext) -> bool:
 		should_load = True
