@@ -1,3 +1,11 @@
+# 0.7.0
+> [!WARNING]
+> ⚠️ This release contains a minimum Python version bump to 3.12 ⚠️
+
+### Changed
+- Migrated project management to `uv`
+- Bumped minimum required Python version to 3.12
+
 # 0.6.0
 > [!WARNING]
 > This release contains breaking changes, marked with ⚠️.
