@@ -15,9 +15,9 @@ class TOCGameType(StrEnum):
 
 
 class TOCEnvironment(StrEnum):
-	Global = "global"
-	Glue = "glue"
-	Both = "both"
+	Global = "Global"
+	Glue = "Glue"
+	Both = "Both"
 
 
 class TOCFamily(StrEnum):
