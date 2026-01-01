@@ -1,7 +1,7 @@
 import os
 import re
-import shlex
 
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Any, Optional, Union
 
@@ -54,6 +54,7 @@ class Dependency:
 
 
 class TOCFile(TypedClass):
+	ClientType: Optional[TOCGameType] = None  # target client for client-specific TOC files. i.e. MyAddon_Standard.toc
 	Interface: Optional[Union[int, list[int]]] = None
 	Title: Optional[str] = None
 	Author: Optional[str] = None
@@ -87,13 +88,28 @@ class TOCFile(TypedClass):
 	UseSecureEnvironment: Optional[bool] = None  # restricted to secure addons
 	AdditionalFields: Optional[dict[str, Any]] = None  # this is a dict of x- fields
 
-	def __init__(self, file_path: Optional[str] = None):
+	def __init__(self, file_path: Optional[Union[Path, str]] = None):
 		super().__init__()
 		if file_path is not None:
+			if not isinstance(file_path, Path):
+				file_path = Path(file_path)
+
 			self.parse_toc_file(file_path)
 
 	def has_attr(self, attr: str) -> bool:
 		return attr in self.__dict__
+
+	def get_target_client_from_path(self, file_path: Path) -> Optional[TOCGameType]:
+		str_path = str(file_path)
+		if not "_" in str_path:
+			return None
+
+		path_split = str_path.split("_")
+		suffix = path_split[-1].removesuffix(".toc")
+		if suffix.lower() in TOCGameType:
+			return TOCGameType[suffix.title()]
+
+		return None
 
 	def export(self, file_path: str, overwrite: bool = False):
 		if os.path.exists(file_path) and not overwrite:
@@ -153,9 +169,11 @@ class TOCFile(TypedClass):
 		with open(file_path, "w", encoding="utf-8") as f:
 			f.writelines(lines)
 
-	def parse_toc_file(self, file_path: str):
-		if not os.path.exists(file_path):
+	def parse_toc_file(self, file_path: Path):
+		if not file_path.exists():
 			raise FileNotFoundError("TOC file not found")
+
+		self.ClientType = self.get_target_client_from_path(file_path)
 
 		# toc files should be utf-8 encoded
 		with open(file_path, "r", encoding="utf-8") as f:
