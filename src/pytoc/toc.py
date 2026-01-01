@@ -9,6 +9,7 @@ from .enums import *
 from .meta import TypedClass
 from .file_entry import *
 
+DO_NOT_EXPORT_FIELDS = {"ClientType"}
 
 CONDITION_VARIABLE_PATTERN = re.compile(r"\[([^\]]+)\]")
 
@@ -118,6 +119,9 @@ class TOCFile(TypedClass):
 		lines = []
 		files = []
 		for directive in self.__annotations__:
+			if directive in DO_NOT_EXPORT_FIELDS:
+				continue
+
 			if directive == "Files":
 				_files = self.Files
 				if _files is None or len(_files) == 0:
