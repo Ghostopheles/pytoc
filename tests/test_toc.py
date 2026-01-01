@@ -210,3 +210,37 @@ def test_addon_load_conditions():
 	ctx.load_addon(dep_name)
 	can_load, err = toc.can_load_addon(ctx)
 	assert can_load, err.name
+
+
+def test_plain_file_entry():
+	ctx = TOCEvaluationContext(TOCGameType.Mainline, TOCEnvironment.Global, TOCTextLocale.enUS)
+
+	path = "Dragon/Dragon.lua"
+	file = TOCFileEntry(path)
+	assert str(file) == path
+	assert file.resolve_path(ctx) == path
+	assert file.should_load(ctx)
+	assert file.export() == path
+
+
+def test_variable_file_entry():
+	ctx = TOCEvaluationContext(TOCGameType.Mainline, TOCEnvironment.Global, TOCTextLocale.enUS)
+
+	path = "[Family]/Dragon.lua"
+	file = TOCFileEntry(path)
+	assert str(file) == path
+	assert file.resolve_path(ctx) == f"{TOCFamily.Mainline}/Dragon.lua"
+	assert file.should_load(ctx)
+	assert file.export() == path
+
+
+def test_conditional_file_entry():
+	ctx = TOCEvaluationContext(TOCGameType.Wowhack, TOCEnvironment.Global, TOCTextLocale.enUS)
+
+	path = "[Family]/Dragon.lua"
+	conditions = [TOCAllowLoadGameType({TOCGameType.Plunderstorm}), TOCAllowLoadEnvironment({TOCEnvironment.Both})]
+	file = TOCFileEntry(path, conditions)
+	assert str(file) == path
+	assert file.resolve_path(ctx) == f"{TOCFamily.Mainline}/Dragon.lua"
+	assert not file.should_load(ctx)
+	assert file.export() == "[Family]/Dragon.lua [AllowLoadGameType plunderstorm] [AllowLoadEnvironment Both]"

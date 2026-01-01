@@ -21,10 +21,8 @@ class TOCEvaluationContext:
 		self.LoadedAddons[addon_name] = True
 
 	def unload_addon(self, addon_name: str):
-		try:
+		if addon_name in self.LoadedAddons:
 			self.LoadedAddons.pop(addon_name)
-		except KeyError:
-			...
 
 	def is_addon_loaded(self, addon_name: str) -> bool:
 		return self.LoadedAddons.get(addon_name, False)
