@@ -25,10 +25,6 @@ Repository = "https://github.com/Ghostopheles/pytoc.git"
 Issues = "https://github.com/Ghostopheles/pytoc/issues"
 Changelog = "https://github.com/Ghostopheles/pytoc/blob/master/CHANGELOG.md"
 
-[build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
@@ -55,7 +51,8 @@ exclude = [
     "build",
     "dist",
     "site-packages",
-    "venv"
+    "venv",
+    "pyproject.toml"
 ]
 line-length = 160
 indent-width = 4
