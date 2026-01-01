@@ -16,7 +16,7 @@ class TOCEvaluationContext:
 	TextLocale: TOCTextLocale
 
 	@property
-	def Family(self):
+	def Family(self) -> TOCFamily:
 		try:
 			return TOC_GAME_TYPE_TO_FAMILY[self.GameType]
 		except KeyError:
