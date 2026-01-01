@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from pytoc import TOCFile, Dependency
+from pytoc import TOCFile, TOCDependency
 
 PWD = os.path.dirname(os.path.realpath(__file__))
 
@@ -72,7 +72,7 @@ def test_parser():
 	}
 
 	for dep in file.Dependencies:
-		dep: Dependency
+		dep: TOCDependency
 		if expected_deps[dep.Name] == dep.Required:
 			expected_deps.pop(dep.Name)
 

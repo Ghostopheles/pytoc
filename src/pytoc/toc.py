@@ -48,7 +48,7 @@ CONDITION_DIRECTIVES_TO_CLASS = {
 
 
 @dataclass
-class Dependency:
+class TOCDependency:
 	Name: str
 	Required: bool
 
@@ -77,7 +77,7 @@ class TOCFile(TypedClass):
 	LoadWith: Optional[list[str]] = None
 	LoadFirst: Optional[bool] = None
 	LoadManagers: Optional[list[str]] = None
-	Dependencies: Optional[list[Dependency]] = None
+	Dependencies: Optional[list[TOCDependency]] = None
 	DefaultState: Optional[bool] = None
 	OnlyBetaAndPTR: Optional[bool] = None
 	LoadSavedVariablesFirst: Optional[bool] = None
@@ -234,9 +234,9 @@ class TOCFile(TypedClass):
 
 		if isinstance(name, list):
 			for _name in name:
-				self.Dependencies.append(Dependency(_name, required))
+				self.Dependencies.append(TOCDependency(_name, required))
 		else:
-			self.Dependencies.append(Dependency(name, required))
+			self.Dependencies.append(TOCDependency(name, required))
 
 	def add_localized_directive(self, directive: str, value: str, locale: str):
 		# localized directive will be accessible via the `.Localized<directive>` attribute
