@@ -5,6 +5,7 @@
 ### Added
 - Added support for the new (not new) TOC variables and conditionals
 - Added support for client-specific TOC files based on the file name
+    - You can find this value, if specified, in the `TOCFile.ClientType` attribute. This attribute does not get exported
 
 ### Changed
 - Migrated project management to `uv`
