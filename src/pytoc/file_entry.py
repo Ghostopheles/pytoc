@@ -46,8 +46,13 @@ class TOCAllowLoad(TOCCondition):
 		return ctx.Environment in self.AllowedValues or TOCEnvironment.Both in self.AllowedValues
 
 
-class TOCAllowLoadEnvironment(TOCAllowLoad):
+@dataclass(frozen=True)
+class TOCAllowLoadEnvironment(TOCCondition):
+	AllowedValues: frozenset[TOCEnvironment]
 	ExportName: str = "AllowLoadEnvironment"
+
+	def evaluate(self, ctx: TOCEvaluationContext) -> bool:
+		return ctx.Environment in self.AllowedValues or TOCEnvironment.Both in self.AllowedValues
 
 
 @dataclass(frozen=True)
