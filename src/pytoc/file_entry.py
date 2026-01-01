@@ -82,7 +82,7 @@ _TOC_DEFAULT_VARIABLES = {"family": lambda ctx: ctx.Family, "game": lambda ctx: 
 
 @dataclass(frozen=True)
 class TOCFileEntry:
-	"""A file found in the 'files' section of a TOC file. This represents the .lua and .xml files."""
+	"""A file found in the 'files' section of a TOC file. Represents the .lua and .xml files."""
 
 	RawFilePath: str
 	Conditions: Optional[list[TOCCondition]] = None
