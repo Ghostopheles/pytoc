@@ -1,9 +1,16 @@
 import os
+import re
+import shlex
 
 from dataclasses import dataclass
 from typing import Any, Optional, Union
 
+from .enums import *
 from .meta import TypedClass
+from .file_entry import *
+
+
+CONDITION_VARIABLE_PATTERN = re.compile(r"\[([^\]]+)\]")
 
 # characters/strings that are interpreted as falsey/truthy according to the WoW client
 FALSEY_CHARS = ("0", "n", "f")
@@ -29,20 +36,15 @@ def StringToBoolean(string: str, defaultReturn: bool = False):
 
 
 # i don't like this, but this old code has forced my hand
-BOOLEAN_DIRECTIVES_LOWER = (
-	"defaultstate",
-	"onlybetaandptr",
-	"loadondemand",
-	"loadfirst",
-	"loadsavedvariablesfirst",
-	"usesecureenvironment",
-)
-
-SAVEDVARIABLES_DIRECTIVES_LOWER = (
-	"savedvariables",
-	"savedvariablespercharacter",
-	"savedvariablesmachine",
-)
+BOOLEAN_DIRECTIVES_LOWER = ("defaultstate", "onlybetaandptr", "loadondemand", "loadfirst", "loadsavedvariablesfirst", "usesecureenvironment")
+SAVEDVARIABLES_DIRECTIVES_LOWER = ("savedvariables", "savedvariablespercharacter", "savedvariablesmachine")
+CONDITION_DIRECTIVES_LOWER = ("allowload", "allowloadgametype", "allowloadenvironment", "allowloadtextlocale")
+CONDITION_DIRECTIVES_TO_CLASS = {
+	"AllowLoad": TOCAllowLoad,
+	"AllowLoadGameType": TOCAllowLoadGameType,
+	"AllowLoadEnvironment": TOCAllowLoadEnvironment,
+	"AllowLoadTextLocale": TOCAllowLoadTextLocale,
+}
 
 
 @dataclass
@@ -56,7 +58,7 @@ class TOCFile(TypedClass):
 	Title: Optional[str] = None
 	Author: Optional[str] = None
 	Version: Optional[str] = None
-	Files: Optional[list[str]] = None
+	Files: Optional[list[TOCFileEntry]] = None
 	Notes: Optional[str] = None
 	Group: Optional[str] = None
 	Category: Optional[str] = None
@@ -78,8 +80,10 @@ class TOCFile(TypedClass):
 	DefaultState: Optional[bool] = None
 	OnlyBetaAndPTR: Optional[bool] = None
 	LoadSavedVariablesFirst: Optional[bool] = None
-	AllowLoad: Optional[str] = None  # restricted to secure addons
-	AllowLoadGameType: Optional[str] = None
+	AllowLoad: Optional[TOCAllowLoad] = None  # only useful to secure addons
+	AllowLoadGameType: Optional[TOCAllowLoadGameType] = None
+	AllowLoadTextLocale: Optional[TOCAllowLoadTextLocale] = None
+	AllowLoadEnvironment: Optional[TOCAllowLoadEnvironment] = None
 	UseSecureEnvironment: Optional[bool] = None  # restricted to secure addons
 	AdditionalFields: Optional[dict[str, Any]] = None  # this is a dict of x- fields
 
@@ -194,6 +198,8 @@ class TOCFile(TypedClass):
 			self.__setattr__(directive, StringToBoolean(value, False))
 		elif directive_lower in SAVEDVARIABLES_DIRECTIVES_LOWER:
 			self.add_saved_variable(directive, value)
+		elif directive_lower in CONDITION_DIRECTIVES_LOWER:
+			self.add_conditional_field(directive, value)
 		else:
 			self.__setattr__(directive, value)
 
@@ -234,13 +240,65 @@ class TOCFile(TypedClass):
 
 		self.AdditionalFields[directive] = value
 
+	def split_file_path_and_conditions(self, line: str) -> tuple[str, list[str]]:
+		line = line.strip()
+		depth = 0
+
+		for i, char in enumerate(line):
+			if char == "[":
+				depth += 1
+			elif char == "]":
+				depth -= 1
+			elif char.isspace() and depth == 0:
+				path = line[:i]
+				rest = line[i:].strip()
+				return path, CONDITION_VARIABLE_PATTERN.findall(rest)
+
+		return line, []
+
+	def parse_condition(self, text: str) -> Optional[TOCCondition]:
+		name, *rest = text.split(None, 1)
+		args = []
+
+		if rest:
+			args = [a.strip() for a in rest[0].split(",")]
+
+		condition_class = CONDITION_DIRECTIVES_TO_CLASS.get(name)
+
+		if condition_class:
+			return condition_class(frozenset(args))
+
+		return None
+
+	def parse_file_line(self, line: str):
+		raw_path, condition_texts = self.split_file_path_and_conditions(line)
+
+		conditions = [self.parse_condition(text) for text in condition_texts]
+
+		if not conditions:
+			return TOCFileEntry(raw_path)
+
+		return TOCFileEntry(raw_path, conditions)
+
 	def add_file(self, file_name: str):
 		if not self.has_attr("_files"):
 			self.Files = []
 
-		self.Files.append(file_name)
+		file_entry = self.parse_file_line(file_name)
+		self.Files.append(file_entry)
 
 	def add_saved_variable(self, directive: str, value: Union[str, list[str]]):
 		if isinstance(value, str):
 			value = [value]
 		setattr(self, directive, value)
+
+	def add_conditional_field(self, directive: str, value: Union[str, list[str]]):
+		if isinstance(value, str):
+			value = [value]
+
+		try:
+			directive_class = CONDITION_DIRECTIVES_TO_CLASS[directive]({*value})
+		except KeyError:
+			raise KeyError(f"Unknown conditional directive: {directive}")
+
+		setattr(self, directive, directive_class)

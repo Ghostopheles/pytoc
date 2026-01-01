@@ -1,0 +1,103 @@
+import re
+
+from dataclasses import dataclass
+from abc import ABC, abstractmethod
+from typing import Optional
+
+from .enums import *
+
+# TOC eval context
+
+
+@dataclass(frozen=True)
+class TOCEvaluationContext:
+	GameType: TOCGameType
+	Environment: TOCEnvironment
+	TextLocale: TOCTextLocale
+
+	@property
+	def Family(self):
+		try:
+			return TOC_GAME_TYPE_TO_FAMILY[self.GameType]
+		except KeyError:
+			raise KeyError(f"Unknown GameType specified: {self.GameType}")
+
+
+# TOC conditions
+
+
+class TOCCondition(ABC):
+	@abstractmethod
+	def evaluate(self, ctx: TOCEvaluationContext) -> bool: ...
+
+
+@dataclass(frozen=True)
+class TOCAllowLoad(TOCCondition):
+	AllowedEnvironments: frozenset[TOCEnvironment]
+
+	def evaluate(self, ctx: TOCEvaluationContext) -> bool:
+		return ctx.Environment in self.AllowedEnvironments or TOCEnvironment.Both in self.AllowedEnvironments
+
+
+class TOCAllowLoadEnvironment(TOCAllowLoad): ...
+
+
+@dataclass(frozen=True)
+class TOCAllowLoadGameType(TOCCondition):
+	AllowedGameTypes: frozenset[TOCGameType]
+
+	def evaluate(self, ctx: TOCEvaluationContext) -> bool:
+		return ctx.GameType in self.AllowedGameTypes
+
+
+@dataclass(frozen=True)
+class TOCAllowLoadTextLocale(TOCCondition):
+	AllowedTextLocales: frozenset[TOCTextLocale]
+
+	def evaluate(self, ctx: TOCEvaluationContext) -> bool:
+		return ctx.TextLocale in self.AllowedTextLocales
+
+
+# TOC variables
+
+_TOC_VAR_PATTERN = re.compile(r"\[([A-Za-z0-9_]+)\]")
+
+_TOC_DEFAULT_VARIABLES = {"family": lambda ctx: ctx.Family, "game": lambda ctx: ctx.GameType, "textlocale": lambda ctx: ctx.TextLocale}
+
+
+@dataclass
+class TOCVariableResolver:
+	def expand(self, path: str, ctx: TOCEvaluationContext) -> str:
+		def replace(match: re.Match):
+			name = match.group(1)
+			try:
+				return _TOC_DEFAULT_VARIABLES[name.lower()](ctx)
+			except KeyError:
+				raise KeyError(f"Undefined TOC variable: {name}")
+
+		return _TOC_VAR_PATTERN.sub(replace, path)
+
+
+@dataclass(frozen=True)
+class TOCFileEntry:
+	"""A file found in the 'files' section of a TOC file. This represents the .lua and .xml files."""
+
+	RawFilePath: str
+	Conditions: Optional[list[TOCCondition]] = None
+
+	def __str__(self):
+		return self.RawFilePath
+
+	def resolve_path(self, resolver: TOCVariableResolver, ctx: TOCEvaluationContext) -> str:
+		return resolver.expand(self.RawFilePath, ctx)
+
+	def should_load(self, ctx: TOCEvaluationContext) -> bool:
+		should_load = True
+		if self.Conditions:
+			for condition in self.Conditions:
+				condition: TOCCondition
+				if not condition.evaluate(ctx):
+					should_load = False
+					break
+
+		return should_load
