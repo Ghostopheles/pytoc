@@ -8,7 +8,7 @@ from .enums import *
 from .meta import TypedClass
 from .file_entry import *
 
-DO_NOT_EXPORT_FIELDS = {"ClientType"}
+DO_NOT_EXPORT_FIELDS = {"ClientType", "FilePath"}
 
 CONDITION_VARIABLE_PATTERN = re.compile(r"\[([^\]]+)\]")
 
@@ -54,6 +54,7 @@ class TOCDependency:
 
 
 class TOCFile(TypedClass):
+	FilePath: Optional[Path] = None
 	ClientType: Optional[TOCGameType] = None  # target client for client-specific TOC files. i.e. MyAddon_Standard.toc
 	Interface: Optional[Union[int, list[int]]] = None
 	Title: Optional[str] = None
@@ -94,6 +95,7 @@ class TOCFile(TypedClass):
 			if not isinstance(file_path, Path):
 				file_path = Path(file_path)
 
+			self.FilePath = file_path
 			self.parse_toc_file(file_path)
 
 	def has_attr(self, attr: str) -> bool:
@@ -107,7 +109,10 @@ class TOCFile(TypedClass):
 		path_split = str_path.split("_")
 		suffix = path_split[-1].removesuffix(".toc")
 		if suffix.lower() in TOCGameType:
-			return TOCGameType[suffix.title()]
+			if suffix.title() in TOCGameType._member_names_:
+				return TOCGameType[suffix.title()]
+			elif suffix.upper() in TOCGameType._member_names_:
+				return TOCGameType[suffix.upper()]
 
 		return None
 
