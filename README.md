@@ -16,7 +16,7 @@ pip install wow-pytoc
 
 Reading a TOC file:
 ```py
-from pytoc import TOCFile, Dependency
+from pytoc import *
 
 file_path: str = "X:/path/to/my/addon.toc"
 toc = TOCFile(file_path)
@@ -27,10 +27,13 @@ print(toc.LocalizedTitle["frFR"])
 print(toc.AdditionalFields["X-Website"])
 
 for file in toc.Files:
+    file: TOCFileEntry
     print(file)
+    if file.Conditions:
+        for condition in file.Conditions:
 
 for dep in toc.Dependencies
-    dep: Dependency
+    dep: TOCDependency
     print(f"Dependency Name: {dep.Name} Required: {dep.Required}")
 ```
 
@@ -45,7 +48,17 @@ toc.Title = "My Addon"
 toc.LocalizedTitle = {
     "frFR": "Mon Addon",
 }
-toc.Files = ["file1.lua", "file2.xml"]
+toc.Files = [
+    TOCFileEntry("file1.lua"),
+    TOCFileEntry("file2.xml"),
+    TOCFileEntry("MainlineOnly.lua", [
+        TOCAllowLoadGameType({TOCGameType.Mainline})
+    ]),
+    TOCFileEntry("PlunderstormGlueOnly.lua", [
+        TOCAllowLoadGameType({TOCGameType.Plunderstorm}),
+        TOCAllowLoadEnvironment({TOCEnvironment.Glue})
+    ])
+]
 
 required = True
 toc.add_dependency("totalRP3", required)
