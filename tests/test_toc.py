@@ -1,7 +1,9 @@
 import os
 import pytest
 
-from pytoc import TOCFile, TOCDependency
+from pathlib import Path
+
+from pytoc import *
 
 PWD = os.path.dirname(os.path.realpath(__file__))
 
@@ -148,3 +150,64 @@ def test_read_export():
 	assert toc.OnlyBetaAndPTR == True
 	assert toc.DefaultState == True
 	assert toc.get_raw_files() == ["file1.lua", "file2.xml"]
+
+
+def discover_toc_files(path: Path) -> list[Path]:
+	toc_files = []
+	for root, _, files in path.walk():
+		for file in files:
+			if file.endswith(".toc"):
+				toc_path = Path(root) / file
+				toc_files.append(toc_path)
+
+	return toc_files
+
+
+def test_blizzard_ui_conformance():
+	ui_source_path = Path("wow-ui-source") / "Interface"
+	if not ui_source_path.exists():
+		ui_source_path = Path(os.getenv("WOW_UI_SOURCE_PATH")) / "Interface"
+
+	if not ui_source_path.exists():
+		return
+
+	failures = []
+
+	# collect all the toc files
+	toc_files = discover_toc_files(ui_source_path)
+	for file in toc_files:
+		try:
+			TOCFile(file)
+		except Exception as e:
+			failures.append((file, e))
+
+	assert not failures, failures
+
+
+def test_addon_load_conditions():
+	ctx = TOCEvaluationContext(TOCGameType.Mainline, TOCEnvironment.Global, TOCTextLocale.enUS)
+
+	toc = TOCFile()
+
+	toc.AllowLoadGameType = TOCAllowLoadGameType({TOCGameType.Wowhack})
+	can_load, err = toc.can_load_addon(ctx)
+	assert (not can_load) and (err == TOCAddonLoadError.WrongGameType), err.name
+
+	toc.AllowLoad = TOCAllowLoad({TOCEnvironment.Both})
+	toc.AllowLoadEnvironment = TOCAllowLoadEnvironment({TOCEnvironment.Global})
+	toc.AllowLoadGameType = TOCAllowLoadGameType({TOCGameType.Mainline})
+	toc.AllowLoadTextLocale = TOCAllowLoadTextLocale({TOCTextLocale.enUS})
+
+	can_load, err = toc.can_load_addon(ctx)
+	assert can_load, err.name
+
+	dep_name = "Blackjack"
+	dep_required = True
+	toc.add_dependency(dep_name, dep_required)
+
+	can_load, err = toc.can_load_addon(ctx)
+	assert (not can_load) and (err == TOCAddonLoadError.MissingDependency), err.name
+
+	ctx.load_addon(dep_name)
+	can_load, err = toc.can_load_addon(ctx)
+	assert can_load, err.name

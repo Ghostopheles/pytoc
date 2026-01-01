@@ -59,7 +59,8 @@ exclude = [
     "dist",
     "site-packages",
     "venv",
-    "pyproject.toml"
+    "pyproject.toml",
+    "wow-ui-source"
 ]
 line-length = 160
 indent-width = 4
