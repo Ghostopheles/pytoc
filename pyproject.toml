@@ -17,7 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
 ]
-requires-python = ">= 3.8"
+requires-python = ">= 3.12"
 
 [project.urls]
 Homepage = "https://github.com/Ghostopheles/pytoc"
@@ -28,6 +28,13 @@ Changelog = "https://github.com/Ghostopheles/pytoc/blob/master/CHANGELOG.md"
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+    "flake8",
+    "pytest",
+    "pytest-cov",
+]
 
 [tool.pytest.ini_options]
 addopts = "--cov=pytoc"
