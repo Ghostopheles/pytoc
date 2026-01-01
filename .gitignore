@@ -10,3 +10,4 @@ _main.py
 .coverage
 .pytest_cache
 *.toc
+dist
