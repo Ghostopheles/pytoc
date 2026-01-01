@@ -32,4 +32,4 @@ jobs:
         run: uv build
 
       - name: Publish
-        run: uv publish --dry-run
+        run: uv publish
