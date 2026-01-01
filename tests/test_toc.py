@@ -244,3 +244,28 @@ def test_conditional_file_entry():
 	assert file.resolve_path(ctx) == f"{TOCFamily.Mainline}/Dragon.lua"
 	assert not file.should_load(ctx)
 	assert file.export() == "[Family]/Dragon.lua [AllowLoadGameType plunderstorm] [AllowLoadEnvironment Both]"
+
+
+def test_textlocale_file_entry():
+	ctx = TOCEvaluationContext(TOCGameType.Mists, TOCEnvironment.Global, TOCTextLocale.enUS)
+
+	path = "[TextLocale]/Dragon.lua"
+	file = TOCFileEntry(path)
+	assert str(file) == path
+	assert file.resolve_path(ctx) == f"{TOCTextLocale.enUS}/Dragon.lua"
+	assert file.should_load(ctx)
+	assert file.export() == path
+
+
+def test_addon_loading():
+	ctx = TOCEvaluationContext(TOCGameType.Wowhack, TOCEnvironment.Global, TOCTextLocale.enUS)
+	assert ctx.LoadedAddons == {}
+
+	addon_name = "Dragon"
+	assert not ctx.is_addon_loaded(addon_name)
+
+	ctx.load_addon(addon_name)
+	assert ctx.is_addon_loaded(addon_name)
+
+	ctx.unload_addon(addon_name)
+	assert not ctx.is_addon_loaded(addon_name)
