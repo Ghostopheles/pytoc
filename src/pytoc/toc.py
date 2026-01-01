@@ -8,7 +8,7 @@ from .enums import *
 from .meta import TypedClass
 from .file_entry import *
 
-DO_NOT_EXPORT_FIELDS = {"ClientType"}
+DO_NOT_EXPORT_FIELDS = {"ClientType", "FilePath"}
 
 CONDITION_VARIABLE_PATTERN = re.compile(r"\[([^\]]+)\]")
 
@@ -48,12 +48,13 @@ CONDITION_DIRECTIVES_TO_CLASS = {
 
 
 @dataclass
-class Dependency:
+class TOCDependency:
 	Name: str
 	Required: bool
 
 
 class TOCFile(TypedClass):
+	FilePath: Optional[Path] = None
 	ClientType: Optional[TOCGameType] = None  # target client for client-specific TOC files. i.e. MyAddon_Standard.toc
 	Interface: Optional[Union[int, list[int]]] = None
 	Title: Optional[str] = None
@@ -77,7 +78,7 @@ class TOCFile(TypedClass):
 	LoadWith: Optional[list[str]] = None
 	LoadFirst: Optional[bool] = None
 	LoadManagers: Optional[list[str]] = None
-	Dependencies: Optional[list[Dependency]] = None
+	Dependencies: Optional[list[TOCDependency]] = None
 	DefaultState: Optional[bool] = None
 	OnlyBetaAndPTR: Optional[bool] = None
 	LoadSavedVariablesFirst: Optional[bool] = None
@@ -94,6 +95,7 @@ class TOCFile(TypedClass):
 			if not isinstance(file_path, Path):
 				file_path = Path(file_path)
 
+			self.FilePath = file_path
 			self.parse_toc_file(file_path)
 
 	def has_attr(self, attr: str) -> bool:
@@ -107,7 +109,10 @@ class TOCFile(TypedClass):
 		path_split = str_path.split("_")
 		suffix = path_split[-1].removesuffix(".toc")
 		if suffix.lower() in TOCGameType:
-			return TOCGameType[suffix.title()]
+			if suffix.title() in TOCGameType._member_names_:
+				return TOCGameType[suffix.title()]
+			elif suffix.upper() in TOCGameType._member_names_:
+				return TOCGameType[suffix.upper()]
 
 		return None
 
@@ -234,9 +239,9 @@ class TOCFile(TypedClass):
 
 		if isinstance(name, list):
 			for _name in name:
-				self.Dependencies.append(Dependency(_name, required))
+				self.Dependencies.append(TOCDependency(_name, required))
 		else:
-			self.Dependencies.append(Dependency(name, required))
+			self.Dependencies.append(TOCDependency(name, required))
 
 	def add_localized_directive(self, directive: str, value: str, locale: str):
 		# localized directive will be accessible via the `.Localized<directive>` attribute
@@ -336,3 +341,25 @@ class TOCFile(TypedClass):
 			raw_files.append(file.export())
 
 		return raw_files
+
+	def can_load_addon(self, context: TOCEvaluationContext) -> tuple[bool, TOCAddonLoadError]:
+		if self.Dependencies and len(self.Dependencies) > 0:
+			deps_fulfilled = True
+			for dep in self.Dependencies:
+				if dep.Required and not context.is_addon_loaded(dep.Name):
+					deps_fulfilled = False
+					break
+
+			if not deps_fulfilled:
+				return False, TOCAddonLoadError.MissingDependency
+
+		if self.AllowLoad and not self.AllowLoad.evaluate(context):
+			return False, TOCAddonLoadError.WrongEnvironment
+		elif self.AllowLoadEnvironment and not self.AllowLoadEnvironment.evaluate(context):
+			return False, TOCAddonLoadError.WrongEnvironment
+		elif self.AllowLoadGameType and not self.AllowLoadGameType.evaluate(context):
+			return False, TOCAddonLoadError.WrongGameType
+		elif self.AllowLoadTextLocale and not self.AllowLoadTextLocale.evaluate(context):
+			return False, TOCAddonLoadError.WrongTextLocale
+
+		return True, TOCAddonLoadError.Success

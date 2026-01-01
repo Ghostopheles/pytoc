@@ -1,7 +1,9 @@
 import os
 import pytest
 
-from pytoc import TOCFile, Dependency
+from pathlib import Path
+
+from pytoc import *
 
 PWD = os.path.dirname(os.path.realpath(__file__))
 
@@ -72,7 +74,7 @@ def test_parser():
 	}
 
 	for dep in file.Dependencies:
-		dep: Dependency
+		dep: TOCDependency
 		if expected_deps[dep.Name] == dep.Required:
 			expected_deps.pop(dep.Name)
 
@@ -148,3 +150,130 @@ def test_read_export():
 	assert toc.OnlyBetaAndPTR == True
 	assert toc.DefaultState == True
 	assert toc.get_raw_files() == ["file1.lua", "file2.xml"]
+
+
+def test_addon_loading():
+	ctx = TOCEvaluationContext(TOCGameType.Wowhack, TOCEnvironment.Global, TOCTextLocale.enUS)
+	assert ctx.LoadedAddons == {}
+
+	addon_name = "Dragon"
+	assert not ctx.is_addon_loaded(addon_name)
+
+	ctx.load_addon(addon_name)
+	assert ctx.is_addon_loaded(addon_name)
+
+	ctx.unload_addon(addon_name)
+	assert not ctx.is_addon_loaded(addon_name)
+
+
+def test_ctx_family():
+	ctx = TOCEvaluationContext(TOCGameType.Wowhack, TOCEnvironment.Global, TOCTextLocale.enUS)
+	assert ctx.Family == TOCFamily.Mainline
+
+	ctx.GameType = TOCGameType.Mists
+	assert ctx.Family == TOCFamily.Classic
+
+
+def discover_toc_files(path: Path) -> list[Path]:
+	toc_files = []
+	for root, _, files in path.walk():
+		for file in files:
+			if file.endswith(".toc"):
+				toc_path = Path(root) / file
+				toc_files.append(toc_path)
+
+	return toc_files
+
+
+def test_blizzard_ui_conformance():
+	ui_source_path = Path("wow-ui-source") / "Interface"
+	if not ui_source_path.exists():
+		ui_source_path = Path(os.getenv("WOW_UI_SOURCE_PATH")) / "Interface"
+
+	assert ui_source_path.exists(), "Unable to find UI source path"
+
+	failures = []
+
+	# collect all the toc files
+	toc_files = discover_toc_files(ui_source_path)
+	for file in toc_files:
+		try:
+			TOCFile(file)
+		except Exception as e:
+			failures.append((file, e))
+
+	assert not failures, failures
+
+
+def test_addon_load_conditions():
+	ctx = TOCEvaluationContext(TOCGameType.Mainline, TOCEnvironment.Global, TOCTextLocale.enUS)
+
+	toc = TOCFile()
+
+	toc.AllowLoadGameType = TOCAllowLoadGameType({TOCGameType.Wowhack})
+	can_load, err = toc.can_load_addon(ctx)
+	assert (not can_load) and (err == TOCAddonLoadError.WrongGameType), err.name
+
+	toc.AllowLoad = TOCAllowLoad({TOCEnvironment.Both})
+	toc.AllowLoadEnvironment = TOCAllowLoadEnvironment({TOCEnvironment.Global})
+	toc.AllowLoadGameType = TOCAllowLoadGameType({TOCGameType.Mainline})
+	toc.AllowLoadTextLocale = TOCAllowLoadTextLocale({TOCTextLocale.enUS})
+
+	can_load, err = toc.can_load_addon(ctx)
+	assert can_load, err.name
+
+	dep_name = "Blackjack"
+	dep_required = True
+	toc.add_dependency(dep_name, dep_required)
+
+	can_load, err = toc.can_load_addon(ctx)
+	assert (not can_load) and (err == TOCAddonLoadError.MissingDependency), err.name
+
+	ctx.load_addon(dep_name)
+	can_load, err = toc.can_load_addon(ctx)
+	assert can_load, err.name
+
+
+def test_plain_file_entry():
+	ctx = TOCEvaluationContext(TOCGameType.Mainline, TOCEnvironment.Global, TOCTextLocale.enUS)
+
+	path = "Dragon/Dragon.lua"
+	file = TOCFileEntry(path)
+	assert str(file) == path
+	assert file.resolve_path(ctx) == path
+	assert file.should_load(ctx)
+	assert file.export() == path
+
+
+def test_variable_file_entry():
+	ctx = TOCEvaluationContext(TOCGameType.Mainline, TOCEnvironment.Global, TOCTextLocale.enUS)
+
+	path = "[Family]/Dragon.lua"
+	file = TOCFileEntry(path)
+	assert str(file) == path
+	assert file.resolve_path(ctx) == f"{TOCFamily.Mainline}/Dragon.lua"
+	assert file.should_load(ctx)
+	assert file.export() == path
+
+
+def test_conditional_file_entry():
+	ctx = TOCEvaluationContext(TOCGameType.Wowhack, TOCEnvironment.Global, TOCTextLocale.enUS)
+
+	path = "[Family]/Dragon.lua"
+	conditions = [TOCAllowLoadGameType({TOCGameType.Plunderstorm}), TOCAllowLoadEnvironment({TOCEnvironment.Both})]
+	file = TOCFileEntry(path, conditions)
+	assert str(file) == path
+	assert file.resolve_path(ctx) == f"{TOCFamily.Mainline}/Dragon.lua"
+	assert not file.should_load(ctx)
+	assert file.export() == "[Family]/Dragon.lua [AllowLoadGameType plunderstorm] [AllowLoadEnvironment Both]"
+
+
+def test_textlocale_file_entry():
+	ctx = TOCEvaluationContext(TOCGameType.Mists, TOCEnvironment.Global, TOCTextLocale.enUS)
+
+	path = "[TextLocale]/Dragon.lua"
+	file = TOCFileEntry(path)
+	assert str(file) == path
+	assert file.resolve_path(ctx) == f"{TOCTextLocale.enUS}/Dragon.lua"
+	assert file.should_load(ctx)
+	assert file.export() == path

@@ -38,5 +38,11 @@ jobs:
     - name: Format with ruff
       run: uv run ruff format --check
 
+    - name: Clone Blizzard UI
+      run: |
+        git clone https://github.com/Gethe/wow-ui-source.git
+        cd wow-ui-source
+        git checkout beta
+
     - name: Test with pytest
       run: uv run pytest
