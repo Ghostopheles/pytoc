@@ -1,6 +1,6 @@
 [project]
 name = "wow-pytoc"
-version = "0.6.0"
+version = "0.7.0"
 description = "A package for reading and writing World of Warcraft addon TOC files."
 authors = [
     { name="Ghostopheles", email="ghost@ghst.tools"}
@@ -31,9 +31,9 @@ build-backend = "setuptools.build_meta"
 
 [dependency-groups]
 dev = [
-    "flake8",
-    "pytest",
-    "pytest-cov",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.10",
 ]
 
 [tool.pytest.ini_options]
