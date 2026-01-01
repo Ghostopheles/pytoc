@@ -1,11 +1,3 @@
-# This workflow will upload a Python Package using Twine when a release is created
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#publishing-to-package-registries
-
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
 name: Deploy
 
 on:
@@ -13,9 +5,6 @@ on:
     tags:
       - '*'
       - '!**-dev**'
-
-permissions:
-  contents: read
 
 jobs:
   tests:
@@ -25,21 +14,28 @@ jobs:
     needs:
       - tests
     environment: pypi_release
+    permissions:
+      id-token: write
+      contents: read
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python
-      uses: actions/setup-python@v3
-      with:
-        python-version: '>=3.12'
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build
-    - name: Build package
-      run: python -m build
-    - name: Publish package
-      uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Checkout
+        uses: actions/checkout@v6
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Setup Python
+        run: uv python install 3.12
+      
+      - name: Build
+        run: uv build
+      
+      - name: Smoke test (wheel)
+        run: uv run --isolated --no-project --with dist/*.whl tests/smoke_test.py
+
+      - name: Smoke test (source distribution)
+        run: uv run --isolated --no-project --with dist/*.tar.gz tests/smoke_test.py
+
+      - name: Publish
+        run: uv publish
