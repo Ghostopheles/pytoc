@@ -107,7 +107,7 @@ class TOCFile(TypedClass):
 				if _files is None or len(_files) == 0:
 					continue
 
-				files.append("\n".join(_files))
+				files.append("\n".join([f.export() for f in _files]))
 			elif directive == "Dependencies":
 				deps = self.Dependencies
 				if deps is None or len(deps) == 0:
@@ -134,11 +134,14 @@ class TOCFile(TypedClass):
 				if data is None:
 					continue
 
-				if isinstance(data, list) and len(data) > 0:
+				if isinstance(data, TOCCondition):
+					lines.append(f"## {directive}: {', '.join(data.AllowedValues)}\n")
+				elif isinstance(data, list) and len(data) > 0:
 					str_data = [str(v) for v in data]
 					lines.append(f"## {directive}: " + ", ".join(str_data) + "\n")
 				else:
-					if directive.lower() in BOOLEAN_DIRECTIVES_LOWER:
+					directive_lower = directive.lower()
+					if directive_lower in BOOLEAN_DIRECTIVES_LOWER:
 						# convert our boolean directive to a 1 or 0
 						data = "1" if data else "0"
 
@@ -302,3 +305,12 @@ class TOCFile(TypedClass):
 			raise KeyError(f"Unknown conditional directive: {directive}")
 
 		setattr(self, directive, directive_class)
+
+	def get_raw_files(self) -> list[str]:
+		"""Returns a list of raw file paths. (no variable or conditional parsing done)"""
+
+		raw_files = []
+		for file in self.Files:
+			raw_files.append(file.export())
+
+		return raw_files

@@ -2,7 +2,7 @@ import re
 
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Any
 
 from .enums import *
 
@@ -27,35 +27,45 @@ class TOCEvaluationContext:
 
 
 class TOCCondition(ABC):
+	AllowedValues: frozenset[Any]
+	ExportName: str
+
 	@abstractmethod
 	def evaluate(self, ctx: TOCEvaluationContext) -> bool: ...
+
+	def export(self) -> str:
+		return f"[{self.ExportName} " + ", ".join(self.AllowedValues) + "]"
 
 
 @dataclass(frozen=True)
 class TOCAllowLoad(TOCCondition):
-	AllowedEnvironments: frozenset[TOCEnvironment]
+	AllowedValues: frozenset[TOCEnvironment]
+	ExportName: str = "AllowLoad"
 
 	def evaluate(self, ctx: TOCEvaluationContext) -> bool:
-		return ctx.Environment in self.AllowedEnvironments or TOCEnvironment.Both in self.AllowedEnvironments
+		return ctx.Environment in self.AllowedValues or TOCEnvironment.Both in self.AllowedValues
 
 
-class TOCAllowLoadEnvironment(TOCAllowLoad): ...
+class TOCAllowLoadEnvironment(TOCAllowLoad):
+	ExportName: str = "AllowLoadEnvironment"
 
 
 @dataclass(frozen=True)
 class TOCAllowLoadGameType(TOCCondition):
-	AllowedGameTypes: frozenset[TOCGameType]
+	AllowedValues: frozenset[TOCGameType]
+	ExportName: str = "AllowLoadGameType"
 
 	def evaluate(self, ctx: TOCEvaluationContext) -> bool:
-		return ctx.GameType in self.AllowedGameTypes
+		return ctx.GameType in self.AllowedValues
 
 
 @dataclass(frozen=True)
 class TOCAllowLoadTextLocale(TOCCondition):
-	AllowedTextLocales: frozenset[TOCTextLocale]
+	AllowedValues: frozenset[TOCTextLocale]
+	ExportName: str = "AllowLoadTextLocale"
 
 	def evaluate(self, ctx: TOCEvaluationContext) -> bool:
-		return ctx.TextLocale in self.AllowedTextLocales
+		return ctx.TextLocale in self.AllowedValues
 
 
 # TOC variables
@@ -101,3 +111,13 @@ class TOCFileEntry:
 					break
 
 		return should_load
+
+	def export(self) -> str:
+		path = self.RawFilePath
+
+		if self.Conditions:
+			for condition in self.Conditions:
+				condition_str = f" {condition.export()}"
+				path += condition_str
+
+		return path.strip()
