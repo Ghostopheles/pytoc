@@ -2,6 +2,10 @@
 > [!WARNING]
 > ⚠️ This release contains a minimum Python version bump to 3.12 ⚠️
 
+### Added
+- Added support for the new (not new) TOC variables and conditionals
+- Added support for client-specific TOC files based on the file name
+
 ### Changed
 - Migrated project management to `uv`
 - Bumped minimum required Python version to 3.12
