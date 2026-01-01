@@ -336,3 +336,25 @@ class TOCFile(TypedClass):
 			raw_files.append(file.export())
 
 		return raw_files
+
+	def can_load_addon(self, context: TOCEvaluationContext) -> tuple[bool, TOCAddonLoadError]:
+		if self.Dependencies and len(self.Dependencies) > 0:
+			deps_fulfilled = True
+			for dep in self.Dependencies:
+				if dep.Required and not context.is_addon_loaded(dep.Name):
+					deps_fulfilled = False
+					break
+
+			if not deps_fulfilled:
+				return False, TOCAddonLoadError.MissingDependency
+
+		if self.AllowLoad and not self.AllowLoad.evaluate(context):
+			return False, TOCAddonLoadError.WrongEnvironment
+		elif self.AllowLoadEnvironment and not self.AllowLoadEnvironment.evaluate(context):
+			return False, TOCAddonLoadError.WrongEnvironment
+		elif self.AllowLoadGameType and not self.AllowLoadGameType.evaluate(context):
+			return False, TOCAddonLoadError.WrongGameType
+		elif self.AllowLoadTextLocale and not self.AllowLoadTextLocale.evaluate(context):
+			return False, TOCAddonLoadError.WrongTextLocale
+
+		return True, TOCAddonLoadError.Success

@@ -5,23 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Any
 
 from .enums import *
-
-# TOC eval context
-
-
-@dataclass(frozen=True)
-class TOCEvaluationContext:
-	GameType: TOCGameType
-	Environment: TOCEnvironment
-	TextLocale: TOCTextLocale
-
-	@property
-	def Family(self) -> TOCFamily:
-		try:
-			return TOC_GAME_TYPE_TO_FAMILY[self.GameType]
-		except KeyError:
-			raise KeyError(f"Unknown GameType specified: {self.GameType}")
-
+from .context import TOCEvaluationContext
 
 # TOC conditions
 

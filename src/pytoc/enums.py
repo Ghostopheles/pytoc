@@ -1,4 +1,4 @@
-from enum import StrEnum
+from enum import StrEnum, Enum
 
 
 class TOCGameType(StrEnum):
@@ -55,3 +55,11 @@ TOC_GAME_TYPE_TO_FAMILY = {
 	TOCGameType.Wrath: TOCFamily.Classic,
 	TOCGameType.Mists: TOCFamily.Classic,
 }
+
+
+class TOCAddonLoadError(Enum):
+	Success = 1
+	WrongGameType = 2
+	WrongEnvironment = 3
+	WrongTextLocale = 4
+	MissingDependency = 5
