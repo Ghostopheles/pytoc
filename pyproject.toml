@@ -44,6 +44,9 @@ addopts = "--cov=pytoc"
 testpaths = [
     "tests",
 ]
+filterwarnings = [
+    "ignore::pytest.PytestCacheWarning"
+]
 
 [tool.ruff]
 exclude = [
