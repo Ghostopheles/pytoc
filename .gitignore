@@ -13,3 +13,4 @@ _main.py
 dist
 .ruff_cache
 .venv
+test.py

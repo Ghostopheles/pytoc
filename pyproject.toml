@@ -29,6 +29,7 @@ Changelog = "https://github.com/Ghostopheles/pytoc/blob/master/CHANGELOG.md"
 dev = [
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
+    "rich>=14.2.0",
     "ruff>=0.14.10",
 ]
 
