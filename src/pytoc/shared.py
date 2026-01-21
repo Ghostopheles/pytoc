@@ -1,0 +1,4 @@
+from .enums import TOCTextLocale
+
+PYTOC_CHECK_DUPLICATES = True
+PYTOC_DEFAULT_LOCALE = TOCTextLocale.enUS

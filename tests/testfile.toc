@@ -12,9 +12,10 @@
 
 ## UseSecureEnvironment: 1
 
-## RequiredDeps: Blackjack
+## RequiredDeps: Blackjack,  Advanced_Scrolling_Combat_Text
 ## Dep: Graveyard
 ## Depdumbdumbdep: FIFA2025
+## Deps: Meorawr
 ## OptionalDeps: totalRP3, KethoDoc, LibAdvFlight-1.0, LibSmokeSignal-1.0, BugGrabber, Warmup
 
 ## IconTexture: Interface/AddOns/totalRP3/Resources/policegar
