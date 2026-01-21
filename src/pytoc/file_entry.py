@@ -1,61 +1,11 @@
 import re
 
 from dataclasses import dataclass
-from abc import ABC, abstractmethod
-from typing import Optional, Any
+from typing import Optional
 
 from .enums import *
+from .load_conditions import *
 from .context import TOCEvaluationContext
-
-# TOC conditions
-
-
-class TOCCondition(ABC):
-	AllowedValues: frozenset[Any]
-	ExportName: str
-
-	@abstractmethod
-	def evaluate(self, ctx: TOCEvaluationContext) -> bool: ...
-
-	def export(self) -> str:
-		return f"[{self.ExportName} " + ", ".join(self.AllowedValues) + "]"
-
-
-@dataclass(frozen=True)
-class TOCAllowLoad(TOCCondition):
-	AllowedValues: frozenset[TOCEnvironment]
-	ExportName: str = "AllowLoad"
-
-	def evaluate(self, ctx: TOCEvaluationContext) -> bool:
-		return ctx.Environment in self.AllowedValues or TOCEnvironment.Both in self.AllowedValues
-
-
-@dataclass(frozen=True)
-class TOCAllowLoadEnvironment(TOCCondition):
-	AllowedValues: frozenset[TOCEnvironment]
-	ExportName: str = "AllowLoadEnvironment"
-
-	def evaluate(self, ctx: TOCEvaluationContext) -> bool:
-		return ctx.Environment in self.AllowedValues or TOCEnvironment.Both in self.AllowedValues
-
-
-@dataclass(frozen=True)
-class TOCAllowLoadGameType(TOCCondition):
-	AllowedValues: frozenset[TOCGameType]
-	ExportName: str = "AllowLoadGameType"
-
-	def evaluate(self, ctx: TOCEvaluationContext) -> bool:
-		return ctx.GameType in self.AllowedValues
-
-
-@dataclass(frozen=True)
-class TOCAllowLoadTextLocale(TOCCondition):
-	AllowedValues: frozenset[TOCTextLocale]
-	ExportName: str = "AllowLoadTextLocale"
-
-	def evaluate(self, ctx: TOCEvaluationContext) -> bool:
-		return ctx.TextLocale in self.AllowedValues
-
 
 # TOC variables
 
