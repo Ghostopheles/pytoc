@@ -38,13 +38,17 @@ def StringToBoolean(string: str, defaultReturn: bool = False):
 # i don't like this, but this old code has forced my hand
 BOOLEAN_DIRECTIVES_LOWER = ("defaultstate", "onlybetaandptr", "loadondemand", "loadfirst", "loadsavedvariablesfirst", "usesecureenvironment")
 SAVEDVARIABLES_DIRECTIVES_LOWER = ("savedvariables", "savedvariablespercharacter", "savedvariablesmachine")
-CONDITION_DIRECTIVES_LOWER = ("allowload", "allowloadgametype", "allowloadenvironment", "allowloadtextlocale")
 CONDITION_DIRECTIVES_TO_CLASS = {
 	"AllowLoad": TOCAllowLoad,
 	"AllowLoadGameType": TOCAllowLoadGameType,
 	"AllowLoadEnvironment": TOCAllowLoadEnvironment,
 	"AllowLoadTextLocale": TOCAllowLoadTextLocale,
+	"ExcludeLoad": TOCExcludeLoad,
+	"ExcludeLoadGameType": TOCExcludeLoadGameType,
+	"ExcludeLoadEnvironment": TOCExcludeLoadEnvironment,
+	"ExcludeLoadTextLocale": TOCExcludeLoadTextLocale,
 }
+CONDITION_DIRECTIVES_LOWER = {key.lower() for key in CONDITION_DIRECTIVES_TO_CLASS.keys()}
 
 
 @dataclass
