@@ -12,6 +12,9 @@
 
 ## UseSecureEnvironment: 1
 
+## AllowLoad: Global
+## AllowLoadGameType: wowhack
+
 ## RequiredDeps: Blackjack,  Advanced_Scrolling_Combat_Text
 ## Dep: Graveyard
 ## Depdumbdumbdep: FIFA2025

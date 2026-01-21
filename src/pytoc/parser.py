@@ -80,7 +80,7 @@ def is_empty(line: str) -> bool:
 
 
 def is_directive(line: str) -> bool:
-    return line.startswith("## ")
+    return line.startswith("## ") and ":" in line
 
 
 def is_comment(line: str) -> bool:

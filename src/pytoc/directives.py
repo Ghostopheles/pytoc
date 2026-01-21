@@ -63,6 +63,35 @@ class TOCListValue[T]:
         self._nextindex += 1
         return value
 
+    def __contains__(self, value):
+        for entry in self.Value:
+            if entry == value:
+                return True
+
+    def __len__(self):
+        return len(self.Value)
+
+    def __eq__(self, other):
+        try:
+            if len(self) != len(other):
+                return False
+            elif isinstance(other, TOCListValue):
+                for value in self:
+                    other_value = other.Value.index(value)
+                    if other_value is None:
+                        return False
+            elif isinstance(other, list):
+                for value in self:
+                    other_value = other.index(value)
+                    if other_value is None:
+                        return False
+            else:
+                return super().__eq__(other)
+        except ValueError:
+            return False
+
+        return True
+
     def append_line(self, line):
         raw = self.Raw.removesuffix("\n")
         raw += f", {line.Value.Raw}"
@@ -71,6 +100,18 @@ class TOCListValue[T]:
 
         self.Raw = raw
         self.Value.extend(line.Value.Value)
+
+        # trigger conversions again if necessary
+        self.__post_init__()
+
+    def append(self, raw: str, value: str):
+        raw = self.Raw.removesuffix("\n")
+        raw += f", {raw}"
+        if not raw.endswith("\n"):
+            raw += "\n"
+
+        self.Raw = raw
+        self.Value.append(value)
 
         # trigger conversions again if necessary
         self.__post_init__()
@@ -86,6 +127,14 @@ class TOCEnumValue[T]:
 class TOCUnkValue:
     Raw: str
     Value: str
+
+    def __str__(self):
+        return self.Value
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.__str__() == other
+        return super().__eq__(other)
 
 
 @dataclass
@@ -105,7 +154,7 @@ class TOCLocalizedDirectiveValue:
         elif isinstance(other, TOCLocalizedDirectiveValue):
             return self.__str__() == other.__str__()
         else:
-            return False
+            return super().__eq__(other)
 
     def get_translation(self, locale: TOCTextLocale) -> Optional[str]:
         return self.Localizations.get(locale)
@@ -161,6 +210,10 @@ TOC_DIRECTIVES: dict[str, TOCDirectiveSpec] = {
     "AddonCompartmentFuncOnLeave": TOCDirectiveSpec(Name="AddonCompartmentFuncOnLeave", ValueType=str, CanBeLocalized=True),
     "LoadOnDemand": TOCDirectiveSpec(
         Name="LoadOnDemand",
+        ValueType=TOCBoolType,
+    ),
+    "LoadFirst": TOCDirectiveSpec(
+        Name="LoadFirst",
         ValueType=TOCBoolType,
     ),
     "LoadWith": TOCDirectiveSpec(

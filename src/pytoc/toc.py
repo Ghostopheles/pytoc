@@ -13,7 +13,7 @@ from .shared import *
 
 @dataclass
 class TOCFile:
-    _file_path: InitVar[str | Path]
+    _file_path: InitVar[str | Path] = None
     _AST: Optional[TOCAST] = None
 
     Interface: Optional[TOCListValue[int]] = None
@@ -31,21 +31,22 @@ class TOCFile:
     AddonCompartmentFunc: Optional[TOCLocalizedDirectiveValue] = None
     AddonCompartmentFuncOnEnter: Optional[TOCLocalizedDirectiveValue] = None
     AddonCompartmentFuncOnLeave: Optional[TOCLocalizedDirectiveValue] = None
-    LoadOnDemand: Optional[bool] = None
+    LoadOnDemand: Optional[TOCBoolType] = None
+    LoadFirst: Optional[TOCBoolType] = None
     LoadWith: Optional[TOCListValue[str]] = None
     LoadManagers: Optional[TOCListValue[str]] = None
     Dependencies: Optional[TOCListValue[str]] = None
     OptionalDeps: Optional[TOCListValue[str]] = None
-    DefaultState: Optional[bool] = None
-    OnlyBetaAndPTR: Optional[bool] = None
-    LoadSavedVariablesFirst: Optional[bool] = None
-    AllowLoad: Optional[TOCListValue[str]] = None
-    AllowLoadGameType: Optional[TOCListValue[str]] = None
-    AllowLoadTextLocale: Optional[TOCListValue[str]] = None
-    UseSecureEnvironment: Optional[bool] = None
+    DefaultState: Optional[TOCBoolType] = None
+    OnlyBetaAndPTR: Optional[TOCBoolType] = None
+    LoadSavedVariablesFirst: Optional[TOCBoolType] = None
+    AllowLoad: Optional[TOCAllowLoad] = None
+    AllowLoadGameType: Optional[TOCAllowLoadGameType] = None
+    AllowLoadTextLocale: Optional[TOCAllowLoadTextLocale] = None
+    UseSecureEnvironment: Optional[TOCBoolType] = None
     ExtendedDirectives: Optional[dict[str, str]] = field(default_factory=dict)
-    UnknownDirectives: Optional[List[TOCUnkValue]] = field(default_factory=list)
-    Files: Optional[List[TOCFileEntry]] = field(default_factory=list)
+    UnknownDirectives: Optional[dict[str, TOCUnkValue]] = field(default_factory=dict)
+    Files: Optional[list[TOCFileEntryLine]] = field(default_factory=list)
     Comments: Optional[TOCListValue[TOCCommentLine]] = field(default_factory=list)
 
     def __post_init__(self, _file_path: str | Path = None):
@@ -57,13 +58,15 @@ class TOCFile:
     def set_ast(self, ast: TOCAST):
         for node in ast.Lines:
             if isinstance(node, TOCFileEntryLine):
-                self.Files.append(node.FileEntry)
+                self.Files.append(node)
 
             if isinstance(node, TOCDirectiveLine):
                 if node.IsExtendedDirective:
                     self.ExtendedDirectives.setdefault(node.RawName, node.Value)
                 elif isinstance(node.Value, TOCUnkValue):
-                    self.UnknownDirectives.append(node)
+                    self.UnknownDirectives.setdefault(node.CanonicalName, node.Value)
+                elif condition_class := CONDITION_DIRECTIVES_TO_CLASS.get(node.CanonicalName):
+                    setattr(self, node.CanonicalName, condition_class(frozenset(node.Value)))
                 else:
                     if isinstance(node.Value, str):
                         node.Value = node.Value.removesuffix("\n")
@@ -94,6 +97,7 @@ class TOCFile:
                             attr.set_translation(locale, node.Value)
                             setattr(self, node.CanonicalName, attr)
                             continue
+
                     setattr(self, node.CanonicalName, node.Value)
 
             if isinstance(node, TOCCommentLine):
@@ -124,3 +128,42 @@ class TOCFile:
         text = "".join(node.RawText for node in self._AST.Lines)
         with open(export_path, "w", encoding="utf-8", newline="") as f:
             f.write(text)
+
+    def get_all_addon_file_names(self) -> List[str]:
+        return [f.FileEntry.export() for f in self.Files]
+
+    def can_load_addon(self, context: TOCEvaluationContext) -> tuple[bool, TOCAddonLoadError]:
+        if self.Dependencies is not None and len(self.Dependencies) > 0:
+            deps_fulfilled = True
+            for dep in self.Dependencies:
+                if not context.is_addon_loaded(dep):
+                    deps_fulfilled = False
+                    break
+
+            if not deps_fulfilled:
+                return False, TOCAddonLoadError.MissingDependency
+
+        if self.AllowLoad is not None and not self.AllowLoad.evaluate(context):
+            return False, TOCAddonLoadError.WrongEnvironment
+        elif self.AllowLoadGameType is not None and not self.AllowLoadGameType.evaluate(context):
+            return False, TOCAddonLoadError.WrongGameType
+        elif self.AllowLoadTextLocale is not None and not self.AllowLoadTextLocale.evaluate(context):
+            return False, TOCAddonLoadError.WrongTextLocale
+
+        return True, TOCAddonLoadError.Success
+
+    def add_dependency(self, dep_name: str, required: bool = False):
+        attr_name = "Dependencies" if required else "OptionalDeps"
+        attr = getattr(self, attr_name, None)
+        if attr is None:
+            if not dep_name.endswith("\n"):
+                value_name = dep_name
+                dep_name += "\n"
+            else:
+                value_name = dep_name.removesuffix("\n")
+            attr = TOCListValue(dep_name, [value_name])
+            setattr(self, attr_name, attr)
+            return
+
+        attr: TOCListValue
+        attr.append(dep_name, dep_name)
