@@ -5,35 +5,13 @@ from dataclasses import dataclass
 from typing import Any, Optional, Union
 
 from .enums import *
+from .utils import StringToBoolean
 from .meta import TypedClass
 from .file_entry import *
 
 DO_NOT_EXPORT_FIELDS = {"ClientType", "FilePath"}
 
 CONDITION_VARIABLE_PATTERN = re.compile(r"\[([^\]]+)\]")
-
-# characters/strings that are interpreted as falsey/truthy according to the WoW client
-FALSEY_CHARS = ("0", "n", "f")
-FALSEY_STRINGS = ("off", "disabled")
-TRUTHY_CHARS = ("1", "2", "3", "4", "5", "6", "7", "8", "9", "y", "t")
-TRUTHY_STRINGS = ("on", "enabled")
-
-
-# this function is terrible, but it supports legacy slash commands
-def StringToBoolean(string: str, defaultReturn: bool = False):
-	if len(string) == 0:
-		return defaultReturn
-
-	string = string.lower()
-	firstChar = string[0]
-
-	if firstChar in FALSEY_CHARS or string in FALSEY_STRINGS:
-		return False
-	elif firstChar in TRUTHY_CHARS or string in TRUTHY_STRINGS:
-		return True
-
-	return defaultReturn
-
 
 # i don't like this, but this old code has forced my hand
 BOOLEAN_DIRECTIVES_LOWER = ("defaultstate", "onlybetaandptr", "loadondemand", "loadfirst", "loadsavedvariablesfirst", "usesecureenvironment")
