@@ -1,7 +1,7 @@
 import re
 
 from pathlib import Path
-from typing import Optional, Union, List
+from typing import Optional, Union, List, NamedTuple
 from dataclasses import dataclass, field, InitVar
 
 
@@ -12,9 +12,21 @@ from .shared import *
 
 
 @dataclass
+class TOCFileBinding:
+    LocalFile: TOCFileEntryLine
+    NodeIndex: int
+
+
+@dataclass
 class TOCFile:
     _file_path: InitVar[str | Path] = None
     _AST: Optional[TOCAST] = None
+
+    _attr_bindings: dict[str, Any] = field(default_factory=dict)
+    _attr_ditrty: bool = False
+
+    _file_bindings: list[TOCFileBinding] = field(default_factory=list)
+    _files_dirty: bool = False
 
     Interface: Optional[TOCListValue[int]] = None
     Title: Optional[TOCLocalizedDirectiveValue] = None
@@ -56,9 +68,11 @@ class TOCFile:
         self.load_file(_file_path)
 
     def set_ast(self, ast: TOCAST):
-        for node in ast.Lines:
+        for i, node in enumerate(ast.Lines):
             if isinstance(node, TOCFileEntryLine):
                 self.Files.append(node)
+                self._file_bindings.append(TOCFileBinding(node, i))
+                continue
 
             if isinstance(node, TOCDirectiveLine):
                 if node.IsExtendedDirective:
@@ -104,6 +118,42 @@ class TOCFile:
                 self.Comments.append(node)
         self._AST = ast
         return self
+
+    def rebuild_file_section(self):
+        ast = self._AST
+        indices = [i for i, n in enumerate(ast.Lines) if isinstance(n, TOCFileEntryLine)]
+        if not indices:
+            insert_at = len(ast.Lines)
+        else:
+            insert_at = indices[0]
+            for i in reversed(indices):
+                del ast.Lines[i]
+
+        new_bindings = []
+
+        for lf in self.Files:
+            node = TOCFileEntryLine(LineNumber=lf.LineNumber, RawText=lf.RawText, FileEntry=lf.FileEntry)
+            ast.Lines.insert(insert_at, node)
+            new_bindings.append(TOCFileBinding(lf, insert_at))
+            insert_at += 1
+
+        self._file_bindings = new_bindings
+
+    def update_file_node(self, node_index: int, local_file: TOCFileEntryLine):
+        node = self._AST.Lines[node_index]
+        node: TOCFileEntryLine
+        node.FileEntry = local_file.FileEntry
+
+    def sync_files_to_ast(self):
+        old_bindings = self._file_bindings
+        new_files = self.Files
+
+        if len(old_bindings) == len(new_files):
+            for binding, new_file in zip(old_bindings, new_files):
+                self.update_file_node(binding.node, new_file)
+            return
+
+        self.rebuild_file_section()
 
     def load_file(self, file_path: Union[str | Path]):
         if not isinstance(file_path, Path):
@@ -167,3 +217,30 @@ class TOCFile:
 
         attr: TOCListValue
         attr.append(dep_name, dep_name)
+
+    def update_file_path(self, index: int, new_path: str):
+        local_file = self.Files[index]
+        new_file = parse_file_line(local_file.LineNumber, new_path)
+
+        del self.Files[index]
+        self.Files.insert(index, new_file)
+
+        self._files_dirty = True
+
+    def add_file(self, file_path: str):
+        last_line_number = self.Files[-1].LineNumber
+        line_number = last_line_number + 1
+        new_file = parse_file_line(line_number + 1, file_path)
+
+        self.Files.insert(line_number, new_file)
+
+        binding = TOCFileBinding(new_file, line_number)
+        self._file_bindings.insert(line_number, binding)
+
+        self._files_dirty = True
+
+    def remove_file(self, index: int):
+        del self.Files[index]
+        del self._file_bindings[index]
+
+        self._files_dirty = True
