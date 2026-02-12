@@ -258,3 +258,8 @@ class TOCAST:
                 toc_lines.append(node)
 
         return cls(toc_lines)
+
+    @classmethod
+    def empty(cls):
+        lines = []
+        return cls(lines)
