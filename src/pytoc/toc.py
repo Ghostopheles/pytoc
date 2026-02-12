@@ -23,7 +23,7 @@ class TOCFile:
     _AST: Optional[TOCAST] = None
 
     _attr_bindings: dict[str, Any] = field(default_factory=dict)
-    _attr_ditrty: bool = False
+    _attr_dirty: bool = False
 
     _file_bindings: list[TOCFileBinding] = field(default_factory=list)
     _files_dirty: bool = False
