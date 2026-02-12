@@ -124,21 +124,34 @@ def parse_typed_value(raw_value: str, spec: TOCDirectiveSpec):
             raise ValueError(f"Expected integer for {spec.Name}, got: {raw_value}")
         return TOCIntValue(raw_value, val)
 
+    if _type is TOCLocalizedDirectiveValue:
+        val = str(raw_value)
+        return TOCLocalizedDirectiveValue(val)
+
     if get_origin(_type) is TOCListValue:
         (list_type,) = get_args(_type)
         values = []
-        for v in raw_value.split(","):
-            if isinstance(v, str):
-                v = v.strip()
-            if not isinstance(v, list_type):
-                v = list_type(v)
-            values.append(v)
+
+        if isinstance(raw_value, list_type):
+            values.append(raw_value)
+        elif isinstance(raw_value, str):
+            for v in raw_value.split(","):
+                if isinstance(v, str):
+                    v = v.strip()
+                if not isinstance(v, list_type):
+                    v = list_type(v)
+                values.append(v)
 
         return TOCListValue[list_type](raw_value, values)
 
     if get_origin(_type) is TOCEnumValue:
         (enum_type,) = get_args(_type)
         return TOCEnumValue[enum_type](raw_value, enum_type[raw_value.strip()])
+
+    if _type in CONDITION_DIRECTIVES_TO_CLASS.values():
+        if not isinstance(raw_value, list):
+            raw_value = frozenset([raw_value])
+        return _type(raw_value)
 
     if not isinstance(raw_value, _type):
         return _type(raw_value)

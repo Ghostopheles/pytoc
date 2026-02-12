@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from .enums import TOCTextLocale
 from .utils import StringToBoolean
 from .shared import PYTOC_DEFAULT_LOCALE
+from .load_conditions import TOCAllowLoad, TOCAllowLoadGameType, TOCAllowLoadTextLocale
 
 
 @dataclass
@@ -72,6 +73,9 @@ class TOCListValue[T]:
         return len(self.Value)
 
     def __eq__(self, other):
+        if other is None:
+            return False
+
         try:
             if len(self) != len(other):
                 return False
@@ -139,7 +143,7 @@ class TOCUnkValue:
 
 @dataclass
 class TOCLocalizedDirectiveValue:
-    RawText: str
+    Raw: str
     Localizations: dict[TOCTextLocale, str] = field(default_factory=dict)
 
     def __str__(self):
@@ -150,6 +154,7 @@ class TOCLocalizedDirectiveValue:
 
     def __eq__(self, other):
         if isinstance(other, str):
+            print(self.__str__(), other)
             return self.__str__() == other
         elif isinstance(other, TOCLocalizedDirectiveValue):
             return self.__str__() == other.__str__()
@@ -170,7 +175,6 @@ class TOCLocalizedDirectiveValue:
 
 
 # schema
-# TODO: maybe consider adding an AllowMultiple/Duplicates flag?
 
 
 @dataclass(frozen=True)
@@ -185,12 +189,12 @@ class TOCDirectiveSpec:
 
 TOC_DIRECTIVES: dict[str, TOCDirectiveSpec] = {
     "Interface": TOCDirectiveSpec(Name="Interface", ValueType=TOCListValue[int]),
-    "Title": TOCDirectiveSpec(Name="Title", ValueType=str, CanBeLocalized=True),
-    "Author": TOCDirectiveSpec(Name="Author", ValueType=str, CanBeLocalized=True),
-    "Version": TOCDirectiveSpec(Name="Version", ValueType=str, CanBeLocalized=True),
-    "Notes": TOCDirectiveSpec(Name="Notes", ValueType=str, CanBeLocalized=True),
-    "Group": TOCDirectiveSpec(Name="Group", ValueType=str, CanBeLocalized=True),
-    "Category": TOCDirectiveSpec(Name="Category", ValueType=str, CanBeLocalized=True),
+    "Title": TOCDirectiveSpec(Name="Title", ValueType=TOCLocalizedDirectiveValue, CanBeLocalized=True),
+    "Author": TOCDirectiveSpec(Name="Author", ValueType=TOCLocalizedDirectiveValue, CanBeLocalized=True),
+    "Version": TOCDirectiveSpec(Name="Version", ValueType=TOCLocalizedDirectiveValue, CanBeLocalized=True),
+    "Notes": TOCDirectiveSpec(Name="Notes", ValueType=TOCLocalizedDirectiveValue, CanBeLocalized=True),
+    "Group": TOCDirectiveSpec(Name="Group", ValueType=TOCLocalizedDirectiveValue, CanBeLocalized=True),
+    "Category": TOCDirectiveSpec(Name="Category", ValueType=TOCLocalizedDirectiveValue, CanBeLocalized=True),
     "SavedVariables": TOCDirectiveSpec(
         Name="SavedVariables",
         ValueType=TOCListValue[str],
@@ -203,11 +207,11 @@ TOC_DIRECTIVES: dict[str, TOCDirectiveSpec] = {
         Name="SavedVariablesMachine",
         ValueType=TOCListValue[str],
     ),
-    "IconTexture": TOCDirectiveSpec(Name="IconTexture", ValueType=str, CanBeLocalized=True),
-    "IconAtlas": TOCDirectiveSpec(Name="IconAtlas", ValueType=str, CanBeLocalized=True),
+    "IconTexture": TOCDirectiveSpec(Name="IconTexture", ValueType=TOCLocalizedDirectiveValue, CanBeLocalized=True),
+    "IconAtlas": TOCDirectiveSpec(Name="IconAtlas", ValueType=TOCLocalizedDirectiveValue, CanBeLocalized=True),
     "AddonCompartmentFunc": TOCDirectiveSpec(Name="AddonCompartmentFunc", ValueType=str, CanBeLocalized=True),
-    "AddonCompartmentFuncOnEnter": TOCDirectiveSpec(Name="AddonCompartmentFuncOnEnter", ValueType=str, CanBeLocalized=True),
-    "AddonCompartmentFuncOnLeave": TOCDirectiveSpec(Name="AddonCompartmentFuncOnLeave", ValueType=str, CanBeLocalized=True),
+    "AddonCompartmentFuncOnEnter": TOCDirectiveSpec(Name="AddonCompartmentFuncOnEnter", ValueType=TOCLocalizedDirectiveValue, CanBeLocalized=True),
+    "AddonCompartmentFuncOnLeave": TOCDirectiveSpec(Name="AddonCompartmentFuncOnLeave", ValueType=TOCLocalizedDirectiveValue, CanBeLocalized=True),
     "LoadOnDemand": TOCDirectiveSpec(
         Name="LoadOnDemand",
         ValueType=TOCBoolType,
@@ -247,9 +251,9 @@ TOC_DIRECTIVES: dict[str, TOCDirectiveSpec] = {
         Name="LoadSavedVariablesFirst",
         ValueType=TOCBoolType,
     ),
-    "AllowLoad": TOCDirectiveSpec(Name="AllowLoad", ValueType=TOCListValue[str]),
-    "AllowLoadGameType": TOCDirectiveSpec(Name="AllowLoadGameType", ValueType=TOCListValue[str]),
-    "AllowLoadTextLocale": TOCDirectiveSpec(Name="AllowLoadTextLocale", ValueType=TOCListValue[str]),
+    "AllowLoad": TOCDirectiveSpec(Name="AllowLoad", ValueType=TOCAllowLoad),
+    "AllowLoadGameType": TOCDirectiveSpec(Name="AllowLoadGameType", ValueType=TOCAllowLoadGameType),
+    "AllowLoadTextLocale": TOCDirectiveSpec(Name="AllowLoadTextLocale", ValueType=TOCAllowLoadTextLocale),
     "UseSecureEnvironment": TOCDirectiveSpec(Name="UseSecureEnvironment", ValueType=TOCBoolType),
 }
 ALIAS_TO_CANONICAL: dict[str, str] = dict()

@@ -5,11 +5,11 @@ from pathlib import Path
 
 from pytoc import *
 
-PWD = os.path.dirname(os.path.realpath(__file__))
+WORKING_DIRECTORY = Path(__file__).resolve().parent
 
 
 def test_parser():
-    file = TOCFile(f"{PWD}/testfile.toc")
+    file = TOCFile(f"{WORKING_DIRECTORY}/testfile.toc")
     assert file.Interface.Value == [110000, 110105, 11507, 30404, 40402, 50500]
     assert file.Title == "GhostTools"
     assert file.Title.get_translation(TOCTextLocale.frFR) == "GrasTools"
@@ -87,31 +87,25 @@ def test_parser():
     assert file.Category.get_translation("zhTW") == "角色扮演"
 
 
-EXPORT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "test_output.toc")
+EXPORT_PATH = WORKING_DIRECTORY / "test_output.toc"
 
 
 def test_export():
     toc = TOCFile()
-    toc.Interface = "110000"
-    toc.Author = "Ghost"
-    toc.Title = "GhostTools"
-    toc.LocalizedTitle = {"frFR": "GrasTools", "deDE": "DieGeistTools"}
-    toc.Category = "Roleplay"
-    toc.LocalizedCategory = {
-        "frFR": "Jeu de rôle",
-        "deDE": "Rollenspiel",
-        "esES": "Juego de rol",
-        "esMX": "Juego de rol",
-        "itIT": "Gioco di Ruolo",
-        "koKR": "롤플레잉",
-        "ptBR": "Interpretação de Papel",
-        "ruRU": "Ролевая игра",
-        "zhCN": "角色扮演",
-        "zhTW": "角色扮演",
-    }
-    toc.OnlyBetaAndPTR = True
-    toc.DefaultState = True
-    toc.Files = ["file1.lua", "file2.xml"]
+    toc.Interface = TOCListValue("1200001", [1200001])
+    toc.Author = TOCLocalizedDirectiveValue("Ghost")
+    toc.Title = TOCLocalizedDirectiveValue(
+        "GhostTools",
+        {TOCTextLocale.frFR: "GrasTools", TOCTextLocale.deDE: "DieGeistTools"},
+    )
+    toc.Category = TOCLocalizedDirectiveValue(
+        "Roleplay",
+        {TOCTextLocale.deDE: "Rollenspiel", TOCTextLocale.koKR: "롤플레잉", TOCTextLocale.zhTW: "角色扮演"},
+    )
+    toc.OnlyBetaAndPTR = TOCBoolType("1", True)
+    toc.DefaultState = TOCBoolType("1", True)
+    toc.add_file("file1.lua")
+    toc.add_file("file2.xml")
 
     overwrite = True
     toc.export(EXPORT_PATH, overwrite)
@@ -123,19 +117,19 @@ def test_read_export():
     assert toc.Interface == 110000
     assert toc.Author == "Ghost"
     assert toc.Title == "GhostTools"
-    assert toc.LocalizedTitle["frFR"] == "GrasTools"
-    assert toc.LocalizedTitle["deDE"] == "DieGeistTools"
+    assert toc.Title.get_translation(TOCTextLocale.frFR) == "GrasTools"
+    assert toc.Title.get_translation(TOCTextLocale.deDE) == "DieGeistTools"
     assert toc.Category == "Roleplay"
-    assert toc.LocalizedCategory["deDE"] == "Rollenspiel"
-    assert toc.LocalizedCategory["esES"] == "Juego de rol"
-    assert toc.LocalizedCategory["esMX"] == "Juego de rol"
-    assert toc.LocalizedCategory["frFR"] == "Jeu de rôle"
-    assert toc.LocalizedCategory["itIT"] == "Gioco di Ruolo"
-    assert toc.LocalizedCategory["koKR"] == "롤플레잉"
-    assert toc.LocalizedCategory["ptBR"] == "Interpretação de Papel"
-    assert toc.LocalizedCategory["ruRU"] == "Ролевая игра"
-    assert toc.LocalizedCategory["zhCN"] == "角色扮演"
-    assert toc.LocalizedCategory["zhTW"] == "角色扮演"
+    assert toc.Category.get_translation("deDE") == "Rollenspiel"
+    assert toc.Category.get_translation("esES") == "Juego de rol"
+    assert toc.Category.get_translation("esMX") == "Juego de rol"
+    assert toc.Category.get_translation("frFR") == "Jeu de rôle"
+    assert toc.Category.get_translation("itIT") == "Gioco di Ruolo"
+    assert toc.Category.get_translation("koKR") == "롤플레잉"
+    assert toc.Category.get_translation("ptBR") == "Interpretação de Papel"
+    assert toc.Category.get_translation("ruRU") == "Ролевая игра"
+    assert toc.Category.get_translation("zhCN") == "角色扮演"
+    assert toc.Category.get_translation("zhTW") == "角色扮演"
     assert toc.OnlyBetaAndPTR == True
     assert toc.DefaultState == True
     assert toc.get_raw_files() == ["file1.lua", "file2.xml"]
