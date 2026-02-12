@@ -91,9 +91,6 @@ EXPORT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "test_ou
 
 
 def test_export():
-    if True:
-        return
-
     toc = TOCFile()
     toc.Interface = "110000"
     toc.Author = "Ghost"
@@ -122,9 +119,6 @@ def test_export():
 
 
 def test_read_export():
-    if True:
-        return
-
     toc = TOCFile(EXPORT_PATH)
     assert toc.Interface == 110000
     assert toc.Author == "Ghost"
