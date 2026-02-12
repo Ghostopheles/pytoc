@@ -146,6 +146,19 @@ class TOCLocalizedDirectiveValue:
     Raw: str
     Localizations: dict[TOCTextLocale, str] = field(default_factory=dict)
 
+    def __cleanup_text(self, text: str) -> str:
+        if text.startswith("## "):
+            split = text.split(":", 1)
+            clean_text = split[-1]
+        else:
+            clean_text = text
+
+        return clean_text.strip().removesuffix("\n")
+
+    def __post_init__(self):
+        default_text = self.__cleanup_text(self.Raw)
+        self.set_translation(PYTOC_DEFAULT_LOCALE, default_text)
+
     def __str__(self):
         return self.get_translation(PYTOC_DEFAULT_LOCALE)
 
@@ -154,7 +167,6 @@ class TOCLocalizedDirectiveValue:
 
     def __eq__(self, other):
         if isinstance(other, str):
-            print(self.__str__(), other)
             return self.__str__() == other
         elif isinstance(other, TOCLocalizedDirectiveValue):
             return self.__str__() == other.__str__()
@@ -171,7 +183,11 @@ class TOCLocalizedDirectiveValue:
             else:
                 locale = PYTOC_DEFAULT_LOCALE
 
+        text = self.__cleanup_text(text)
         self.Localizations[locale] = text
+
+    def has_translation(self, locale: TOCTextLocale) -> bool:
+        return self.Localizations.get(locale, None) is not None
 
 
 # schema

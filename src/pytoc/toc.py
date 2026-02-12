@@ -118,7 +118,8 @@ class TOCFile:
             self.__add_directive_binding(node.CanonicalName, node_index)
 
         elif condition_class := CONDITION_DIRECTIVES_TO_CLASS.get(node.CanonicalName):
-            self.__set(node.CanonicalName, condition_class(frozenset(node.Value)))
+            if not isinstance(node.Value, condition_class):
+                self.__set(node.CanonicalName, condition_class(frozenset(node.Value)))
             self.__add_directive_binding(node.CanonicalName, node_index)
 
         else:
@@ -142,14 +143,13 @@ class TOCFile:
                     if PYTOC_CHECK_DUPLICATES and not spec.AllowDuplicates:
                         assert getattr(self, node.CanonicalName) is None, f"Attempt to register duplicate {node.CanonicalName} directive"
 
-                    if isinstance(existing_attribute, TOCLocalizedDirectiveValue):
-                        existing_attribute.set_translation(locale, node.Value)
+                    if isinstance(existing_attribute, TOCLocalizedDirectiveValue) and not existing_attribute.has_translation(locale):
+                        existing_attribute.set_translation(locale, node.RawText)
 
                     self.__add_directive_binding(node.CanonicalName, node_index)
                     return
                 else:
                     attr = TOCLocalizedDirectiveValue(node.RawText)
-                    attr.set_translation(locale, node.Value)
                     self.__set(node.CanonicalName, attr)
                     self.__add_directive_binding(node.CanonicalName, node_index)
                     return
