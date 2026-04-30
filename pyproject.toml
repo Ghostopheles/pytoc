@@ -1,6 +1,6 @@
 [project]
 name = "wow-pytoc"
-version = "0.7.0"
+version = "0.8.0"
 description = "A package for reading and writing World of Warcraft addon TOC files."
 authors = [
     { name="Ghostopheles", email="ghost@ghst.tools"}
@@ -11,8 +11,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
 
     "Intended Audience :: Developers",
-
-    "License :: Public Domain",
 
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
