@@ -101,6 +101,7 @@ class TOCFile(metaclass=_TOCFileMeta):
     AllowLoadGameType: Optional[TOCAllowLoadGameType]
     AllowLoadTextLocale: Optional[TOCAllowLoadTextLocale]
     UseSecureEnvironment: Optional[TOCBoolType]
+    AllowAddOnTableAccess: Optional[TOCBoolType]
 
     def __init__(self, file_path: Optional[Union[str, Path]] = None):
         self._AST: TOCAST = TOCAST.empty()

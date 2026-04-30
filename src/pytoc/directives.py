@@ -240,6 +240,7 @@ TOC_DIRECTIVES: dict[str, TOCDirectiveSpec] = {
     "AllowLoadGameType": TOCDirectiveSpec(Name="AllowLoadGameType", ValueType=TOCAllowLoadGameType),
     "AllowLoadTextLocale": TOCDirectiveSpec(Name="AllowLoadTextLocale", ValueType=TOCAllowLoadTextLocale),
     "UseSecureEnvironment": TOCDirectiveSpec(Name="UseSecureEnvironment", ValueType=TOCBoolType),
+    "AllowAddOnTableAccess": TOCDirectiveSpec(Name="AllowAddOnTableAccess", ValueType=TOCBoolType),
 }
 ALIAS_TO_CANONICAL: dict[str, str] = dict()
 ALIAS_FUNCTIONS: dict[str, Callable[[str], bool]] = dict()
