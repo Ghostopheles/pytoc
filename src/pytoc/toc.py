@@ -1,458 +1,381 @@
 from pathlib import Path
-from dataclasses import dataclass, field, InitVar
-from typing import Optional, Union, List, Any, get_args
+from typing import Any, Optional, Union, get_args, get_origin
 
 from .enums import *
 from .file_entry import *
 from .parser import *
+from .directives import *
 from .shared import *
+from .utils import StringToBoolean
+from .context import TOCEvaluationContext
 
 
-@dataclass
-class TOCFileBinding:
-    """A binding between a file and it's node in the AST"""
-
-    LocalFile: TOCFileEntryLine
-    NodeIndex: int
-
-
-@dataclass
-class TOCDirectiveBinding:
-    """A binding between a given TOC directive and it's nodes in the AST"""
-
-    DirectiveName: str
-    NodeIndices: list[int]
+def _build_directive_raw(raw_name: str, locale: Optional[Union[TOCTextLocale, str]], value_str: str) -> str:
+    if locale is not None:
+        loc_str = locale.name if isinstance(locale, TOCTextLocale) else str(locale)
+        suffix = f"-{loc_str}"
+    else:
+        suffix = ""
+    if not value_str.endswith("\n"):
+        value_str = value_str + "\n"
+    return f"{PYTOC_DIRECTIVE_PREFIX} {raw_name}{suffix}: {value_str}"
 
 
-@dataclass
-class TOCFile:
-    _file_path: InitVar[Optional[Union[str, Path]]] = None
-    _AST: Optional[TOCAST] = field(default=None, init=False, repr=True)
+def _value_to_str(value: Any) -> str:
+    if isinstance(value, TOCListValue):
+        return ", ".join(str(v) for v in value.Value)
+    if isinstance(value, (TOCBoolType, TOCIntValue)):
+        return str(value.Value)
+    if isinstance(value, TOCEnumValue):
+        return str(value.Value)
+    if isinstance(value, TOCCondition):
+        return ", ".join(str(v) for v in value.Values)
+    if isinstance(value, TOCLocalizedDirectiveValue):
+        return value.get_translation(PYTOC_DEFAULT_LOCALE) or ""
+    if isinstance(value, TOCUnkValue):
+        return value.Value
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return ", ".join(str(v) for v in value)
+    return str(value)
 
-    _attr_bindings: dict[str, TOCDirectiveBinding] = field(default_factory=dict, init=False, repr=False)
-    _attr_dirty: bool = field(default=False, init=False, repr=False)
 
-    _file_bindings: list[TOCFileBinding] = field(default_factory=list, init=False, repr=False)
-    _files_dirty: bool = field(default=False, init=False, repr=False)
+def _normalize_locale_key(loc) -> Optional[TOCTextLocale]:
+    if loc is None:
+        return None
+    if isinstance(loc, TOCTextLocale):
+        return loc
+    if isinstance(loc, str) and loc in TOCTextLocale.__members__:
+        return TOCTextLocale[loc]
+    return None
 
-    _initialized: bool = field(default=False, init=False, repr=False)
 
-    Interface: Optional[TOCListValue[int]] = field(default=None, init=False)
-    Title: Optional[TOCLocalizedDirectiveValue] = field(default=None, init=False)
-    Author: Optional[TOCLocalizedDirectiveValue] = field(default=None, init=False)
-    Version: Optional[TOCLocalizedDirectiveValue] = field(default=None, init=False)
-    Notes: Optional[TOCLocalizedDirectiveValue] = field(default=None, init=False)
-    Group: Optional[TOCLocalizedDirectiveValue] = field(default=None, init=False)
-    Category: Optional[TOCLocalizedDirectiveValue] = field(default=None, init=False)
-    SavedVariables: Optional[TOCListValue[str]] = field(default=None, init=False)
-    SavedVariablesPerCharacter: Optional[TOCListValue[str]] = field(default=None, init=False)
-    SavedVariablesMachine: Optional[TOCListValue[str]] = field(default=None, init=False)
-    IconTexture: Optional[TOCLocalizedDirectiveValue] = field(default=None, init=False)
-    IconAtlas: Optional[TOCLocalizedDirectiveValue] = field(default=None, init=False)
-    AddonCompartmentFunc: Optional[TOCLocalizedDirectiveValue] = field(default=None, init=False)
-    AddonCompartmentFuncOnEnter: Optional[TOCLocalizedDirectiveValue] = field(default=None, init=False)
-    AddonCompartmentFuncOnLeave: Optional[TOCLocalizedDirectiveValue] = field(default=None, init=False)
-    LoadOnDemand: Optional[TOCBoolType] = field(default=None, init=False)
-    LoadFirst: Optional[TOCBoolType] = field(default=None, init=False)
-    LoadWith: Optional[TOCListValue[str]] = field(default=None, init=False)
-    LoadManagers: Optional[TOCListValue[str]] = field(default=None, init=False)
-    Dependencies: Optional[TOCListValue[str]] = field(default=None, init=False)
-    OptionalDeps: Optional[TOCListValue[str]] = field(default=None, init=False)
-    DefaultState: Optional[TOCBoolType] = field(default=None, init=False)
-    OnlyBetaAndPTR: Optional[TOCBoolType] = field(default=None, init=False)
-    LoadSavedVariablesFirst: Optional[TOCBoolType] = field(default=None, init=False)
-    AllowLoad: Optional[TOCAllowLoad] = field(default=None, init=False)
-    AllowLoadGameType: Optional[TOCAllowLoadGameType] = field(default=None, init=False)
-    AllowLoadTextLocale: Optional[TOCAllowLoadTextLocale] = field(default=None, init=False)
-    UseSecureEnvironment: Optional[TOCBoolType] = field(default=None, init=False)
+class _DirectiveDescriptor:
+    __slots__ = ("spec",)
 
-    ExtendedDirectives: Optional[dict[str, str]] = field(default_factory=dict, init=False)
-    UnknownDirectives: Optional[dict[str, TOCUnkValue]] = field(default_factory=dict, init=False)
-    Files: Optional[list[TOCFileEntryLine]] = field(default_factory=list, init=False)
-    Comments: Optional[TOCListValue[TOCCommentLine]] = field(default_factory=list, init=False)
+    def __init__(self, spec: TOCDirectiveSpec):
+        self.spec = spec
 
-    def __set(self, name: str, value: Any):
-        # using object.__setattr__ to avoid calling into our own hook uwu
-        object.__setattr__(self, name, value)
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+        return instance._get_directive(self.spec)
 
-    def __post_init__(self, _file_path: str | Path = None):
-        if _file_path is not None:
-            self.load_file(_file_path)
-        else:
-            self.setup_empty()
+    def __set__(self, instance, value):
+        instance._set_directive(self.spec, value)
 
-        self.__set("_initialized", True)
 
-    def __setattr__(self, name: str, value: Any):
-        if not self._initialized or name.startswith("_"):
-            self.__set(name, value)
-            return
+class _TOCFileMeta(type):
+    def __new__(mcls, name, bases, ns):
+        cls = super().__new__(mcls, name, bases, ns)
+        for spec in TOC_DIRECTIVES.values():
+            setattr(cls, spec.Name, _DirectiveDescriptor(spec))
+        return cls
 
-        old_value = getattr(self, name, None)
-        self.__set(name, value)
 
-        if name in TOC_DIRECTIVES or name in CONDITION_DIRECTIVES_TO_CLASS:
-            if old_value != value:
-                self.__set("_attr_dirty", True)
+class TOCFile(metaclass=_TOCFileMeta):
+    Interface: Optional[TOCListValue[int]]
+    Title: Optional[TOCLocalizedDirectiveValue]
+    Author: Optional[TOCLocalizedDirectiveValue]
+    Version: Optional[TOCLocalizedDirectiveValue]
+    Notes: Optional[TOCLocalizedDirectiveValue]
+    Group: Optional[TOCLocalizedDirectiveValue]
+    Category: Optional[TOCLocalizedDirectiveValue]
+    SavedVariables: Optional[TOCListValue[str]]
+    SavedVariablesPerCharacter: Optional[TOCListValue[str]]
+    SavedVariablesMachine: Optional[TOCListValue[str]]
+    IconTexture: Optional[TOCLocalizedDirectiveValue]
+    IconAtlas: Optional[TOCLocalizedDirectiveValue]
+    AddonCompartmentFunc: Optional[TOCLocalizedDirectiveValue]
+    AddonCompartmentFuncOnEnter: Optional[TOCLocalizedDirectiveValue]
+    AddonCompartmentFuncOnLeave: Optional[TOCLocalizedDirectiveValue]
+    LoadOnDemand: Optional[TOCBoolType]
+    LoadFirst: Optional[TOCBoolType]
+    LoadWith: Optional[TOCListValue[str]]
+    LoadManagers: Optional[TOCListValue[str]]
+    Dependencies: Optional[TOCListValue[str]]
+    OptionalDeps: Optional[TOCListValue[str]]
+    DefaultState: Optional[TOCBoolType]
+    OnlyBetaAndPTR: Optional[TOCBoolType]
+    LoadSavedVariablesFirst: Optional[TOCBoolType]
+    AllowLoad: Optional[TOCAllowLoad]
+    AllowLoadGameType: Optional[TOCAllowLoadGameType]
+    AllowLoadTextLocale: Optional[TOCAllowLoadTextLocale]
+    UseSecureEnvironment: Optional[TOCBoolType]
 
-    def setup_empty(self):
-        ast = TOCAST.empty()
-        self.set_ast(ast)
+    def __init__(self, file_path: Optional[Union[str, Path]] = None):
+        self._AST: TOCAST = TOCAST.empty()
+        if file_path is not None:
+            self.load_file(file_path)
 
-    def __add_directive_binding(self, attr_name: str, node_index: int):
-        if attr_name not in self._attr_bindings:
-            self._attr_bindings[attr_name] = TOCDirectiveBinding(DirectiveName=attr_name, NodeIndices=[node_index])
-        else:
-            self._attr_bindings[attr_name].NodeIndices.append(node_index)
+    def __repr__(self):
+        return f"TOCFile(lines={len(self._AST.Lines)})"
 
-    def __add_file_binding(self, node: TOCFileEntryLine, node_index: int):
-        self._file_bindings.append(TOCFileBinding(node, node_index))
+    def _iter_directive_nodes(self, canonical: str):
+        for i, n in enumerate(self._AST.Lines):
+            if isinstance(n, TOCDirectiveLine) and not n.IsExtendedDirective and n.CanonicalName == canonical:
+                yield i, n
 
-    def __process_directive_line(self, node: TOCDirectiveLine, node_index: int):
-        if node.IsExtendedDirective:
-            self.ExtendedDirectives.setdefault(node.RawName, node.Value)
-            self.__add_directive_binding(node.RawName, node_index)
+    def _directive_section_end_idx(self) -> int:
+        last_directive = -1
+        first_file = None
+        for i, n in enumerate(self._AST.Lines):
+            if isinstance(n, TOCDirectiveLine):
+                last_directive = i
+            elif isinstance(n, TOCFileEntryLine) and first_file is None:
+                first_file = i
+        if last_directive >= 0:
+            return last_directive + 1
+        if first_file is not None:
+            return first_file
+        return len(self._AST.Lines)
 
-        elif isinstance(node.Value, TOCUnkValue):
-            self.UnknownDirectives.setdefault(node.CanonicalName, node.Value)
-            self.__add_directive_binding(node.CanonicalName, node_index)
+    def _insertion_idx_for_directive(self, canonical: str) -> int:
+        last = -1
+        for i, n in enumerate(self._AST.Lines):
+            if isinstance(n, TOCDirectiveLine) and not n.IsExtendedDirective and n.CanonicalName == canonical:
+                last = i
+        if last >= 0:
+            return last + 1
+        return self._directive_section_end_idx()
 
-        elif condition_class := CONDITION_DIRECTIVES_TO_CLASS.get(node.CanonicalName):
-            if not isinstance(node.Value, condition_class):
-                self.__set(node.CanonicalName, condition_class(frozenset(node.Value)))
-            self.__add_directive_binding(node.CanonicalName, node_index)
-
-        else:
-            if isinstance(node.Value, str):
-                node.Value = node.Value.removesuffix("\n")
-
-            spec = TOC_DIRECTIVES.get(node.CanonicalName)
-            existing_attribute = getattr(self, node.CanonicalName, None)
-
-            if existing_attribute is not None and isinstance(existing_attribute, TOCListValue):
-                existing_attribute.append_line(node)
-                self.__add_directive_binding(node.CanonicalName, node_index)
-                return
-
-            if spec is not None and spec.CanBeLocalized:
-                locale = node.Locale if node.Locale is not None else PYTOC_DEFAULT_LOCALE
-                if not isinstance(locale, TOCTextLocale):
-                    locale = TOCTextLocale[locale]
-
-                if existing_attribute is not None:
-                    if PYTOC_CHECK_DUPLICATES and not spec.AllowDuplicates:
-                        assert getattr(self, node.CanonicalName) is None, f"Attempt to register duplicate {node.CanonicalName} directive"
-
-                    if isinstance(existing_attribute, TOCLocalizedDirectiveValue) and not existing_attribute.has_translation(locale):
-                        existing_attribute.set_translation(locale, node.RawText)
-
-                    self.__add_directive_binding(node.CanonicalName, node_index)
-                    return
-                else:
-                    attr = TOCLocalizedDirectiveValue(node.RawText)
-                    self.__set(node.CanonicalName, attr)
-                    self.__add_directive_binding(node.CanonicalName, node_index)
-                    return
-
-        self.__set(node.CanonicalName, node.Value)
-        self.__add_directive_binding(node.CanonicalName, node_index)
-
-    def __regenerate_directive_line(self, node: TOCDirectiveLine) -> str:
-        locale_suffix = f"-{node.Locale}" if node.Locale else ""
-
-        if isinstance(node.Value, TOCListValue):
-            value_str = ", ".join(str(v) for v in node.Value.Value)  # Value on Value on Value! :(
-        elif isinstance(node.Value, (TOCBoolType, TOCIntValue)):
-            value_str = str(node.Value.Value)
-        elif isinstance(node.Value, (list, tuple)):
-            value_str = ", ".join(str(v) for v in node.Value)
-        else:
-            value_str = str(node.Value) if not isinstance(node.Value, str) else node.Value
-
-        if not value_str.endswith("\n"):
-            value_str += "\n"
-
-        return f"{PYTOC_DIRECTIVE_PREFIX} {node.RawName}{locale_suffix}: {value_str}"
-
-    def __generate_directive_raw_text(self, attr_name: str, value: Any):
-        if isinstance(value, TOCListValue):
-            value_str = ", ".join(str(v) for v in value.Value)
-        else:
-            value_str = str(value) if not isinstance(value, str) else value
-
-        if not value_str.endswith("\n"):
-            value_str += "\n"
-
-        return f"{PYTOC_DIRECTIVE_PREFIX} {attr_name}: {value_str}"
-
-    def __reindex_bindings_after(self, start_index: int):
-        for binding in self._attr_bindings.values():
-            binding.NodeIndices = [idx + 1 if idx >= start_index else idx for idx in binding.NodeIndices]
-
-        for i, binding in enumerate(self._file_bindings):
-            if binding.NodeIndex >= start_index:
-                self._file_bindings[i] = TOCFileBinding(binding.LocalFile, binding.NodeIndex + 1)
-
-    def __insert_new_directive(self, attr_name: str, value: Any):
-        insert_at = 0
-        for i, node in enumerate(self._AST.Lines):
-            if isinstance(node, TOCDirectiveLine):
-                insert_at = i + 1
-            elif isinstance(node, TOCFileEntryLine):
-                break
-
-        new_node = TOCDirectiveLine(
-            LineNumber=insert_at,
-            RawText=self.__generate_directive_raw_text(attr_name, value),
-            CanonicalName=attr_name,
-            RawName=attr_name,
+    def _make_directive_node(self, canonical: str, raw_name: str, locale: Optional[TOCTextLocale], value: Any) -> TOCDirectiveLine:
+        raw = _build_directive_raw(raw_name, locale, _value_to_str(value))
+        return TOCDirectiveLine(
+            LineNumber=0,
+            RawText=raw,
+            CanonicalName=canonical,
+            RawName=raw_name,
+            Locale=locale,
             Value=value,
-            Locale=None,
             IsExtendedDirective=False,
         )
 
-        self._AST.Lines.insert(insert_at, new_node)
-        self.__add_directive_binding(attr_name, insert_at)
-        self.__reindex_bindings_after(insert_at)
+    def _remove_indices(self, indices):
+        for i in sorted(indices, reverse=True):
+            del self._AST.Lines[i]
 
-    def set_ast(self, ast: TOCAST, overwrite: bool = False):
-        if self._initialized and not overwrite:
-            raise Exception("Attempt to set a new AST on an initialized TOCFile. To overwrite, pass `overwrite=True` into TOCFile.set_ast().")
+    def _get_directive(self, spec: TOCDirectiveSpec):
+        nodes = list(self._iter_directive_nodes(spec.Name))
+        if not nodes:
+            return None
 
-        self._attr_bindings.clear()
-        self._file_bindings.clear()
-
-        for i, node in enumerate(ast.Lines):
-            if isinstance(node, TOCFileEntryLine):
-                self.Files.append(node)
-                self.__add_file_binding(node, i)
-                continue
-
-            if isinstance(node, TOCDirectiveLine):
-                self.__process_directive_line(node, i)
-
-            elif isinstance(node, TOCCommentLine):
-                self.Comments.append(node)
-
-        self.__set("_AST", ast)
-
-    def sync_attributes_to_ast(self):
-        if not self._attr_dirty:
-            return
-
-        for attr_name, binding in self._attr_bindings.items():
-            attr_value = getattr(self, attr_name, None)
-            if attr_value is None:
-                continue
-
-            for node_idx in binding.NodeIndices:
-                if node_idx >= len(self._AST.Lines):
-                    continue
-
-                node = self._AST.Lines[node_idx]
-                if not isinstance(node, TOCDirectiveLine):
-                    continue
-
-                if isinstance(attr_value, TOCLocalizedDirectiveValue):
-                    locale = node.Locale if node.Locale else PYTOC_DEFAULT_LOCALE
-                    if not isinstance(locale, TOCTextLocale):
-                        locale = TOCTextLocale[locale] if locale else PYTOC_DEFAULT_LOCALE
-
-                    new_value = attr_value.get_translation(locale)
-                    if new_value is not None:
-                        node.Value = new_value
-                        node.RawText = self.__regenerate_directive_line(node)
-
-                elif isinstance(attr_value, TOCListValue):
-                    node.Value = attr_value.Value
-                    node.RawText = self.__regenerate_directive_line(node)
-
-                elif isinstance(attr_value, TOCCondition):
-                    node.Value = list(attr_value.Values)
-                    node.RawText = self.__regenerate_directive_line(node)
-
+        if spec.CanBeLocalized:
+            agg = TOCLocalizedDirectiveValue.__new__(TOCLocalizedDirectiveValue)
+            agg.Raw = nodes[0][1].RawText
+            agg.Localizations = {}
+            for _, n in nodes:
+                loc = _normalize_locale_key(n.Locale) or PYTOC_DEFAULT_LOCALE
+                if isinstance(n.Value, TOCLocalizedDirectiveValue):
+                    text = n.Value.get_translation(PYTOC_DEFAULT_LOCALE)
                 else:
-                    node.Value = attr_value
-                    node.RawText = self.__regenerate_directive_line(node)
+                    text = _value_to_str(n.Value)
+                if text is not None:
+                    agg.Localizations[loc] = text
+            return agg
 
-        self.__set("_attr_dirty", False)
+        if get_origin(spec.ValueType) is TOCListValue:
+            (lt,) = get_args(spec.ValueType)
+            all_values = []
+            raws = []
+            for _, n in nodes:
+                if isinstance(n.Value, TOCListValue):
+                    all_values.extend(n.Value.Value)
+                    raws.append(n.Value.Raw)
+                else:
+                    all_values.append(n.Value)
+                    raws.append(str(n.Value))
+            return TOCListValue[lt](", ".join(r.rstrip("\n") for r in raws), all_values)
 
-    def rebuild_file_section(self):
-        ast = self._AST
-        indices = [i for i, n in enumerate(ast.Lines) if isinstance(n, TOCFileEntryLine)]
+        return nodes[0][1].Value
 
-        if not indices:
-            insert_at = len(ast.Lines)
-        else:
-            insert_at = indices[0]
-            for i in reversed(indices):
-                del ast.Lines[i]
+    def _coerce_scalar(self, spec: TOCDirectiveSpec, value: Any):
+        vt = spec.ValueType
+        if vt is TOCBoolType and not isinstance(value, TOCBoolType):
+            if isinstance(value, str):
+                return TOCBoolType(value, StringToBoolean(value))
+            return TOCBoolType(str(int(bool(value))), bool(value))
+        if vt is TOCIntValue and not isinstance(value, TOCIntValue):
+            return TOCIntValue(str(value), int(value))
+        if isinstance(vt, type) and issubclass(vt, TOCCondition) and not isinstance(value, TOCCondition):
+            if isinstance(value, (list, tuple, set, frozenset)):
+                return vt(frozenset(value))
+        return value
 
-        new_bindings = []
+    def _set_directive(self, spec: TOCDirectiveSpec, value: Any):
+        existing = list(self._iter_directive_nodes(spec.Name))
+        canonical = spec.Name
 
-        for lf in self.Files:
-            node = TOCFileEntryLine(LineNumber=lf.LineNumber, RawText=lf.RawText, FileEntry=lf.FileEntry)
-            ast.Lines.insert(insert_at, node)
-            new_bindings.append(TOCFileBinding(lf, insert_at))
-            insert_at += 1
-
-        self.__set("_file_bindings", new_bindings)
-        self.__set("_files_dirty", False)
-
-    def update_file_node(self, node_index: int, local_file: TOCFileEntryLine):
-        node = self._AST.Lines[node_index]
-
-        node: TOCFileEntryLine
-        node.FileEntry = local_file.FileEntry
-        node.RawText = local_file.RawText
-
-    def sync_files_to_ast(self):
-        if not self._files_dirty:
+        if value is None:
+            self._remove_indices([i for i, _ in existing])
             return
 
-        old_bindings = self._file_bindings
-        new_files = self.Files
+        if spec.CanBeLocalized:
+            if isinstance(value, str):
+                value = TOCLocalizedDirectiveValue(value)
+            elif not isinstance(value, TOCLocalizedDirectiveValue):
+                value = TOCLocalizedDirectiveValue(str(value))
 
-        if len(old_bindings) == len(new_files):
-            for binding, new_file in zip(old_bindings, new_files):
-                self.update_file_node(binding.NodeIndex, new_file)
+            existing_by_locale: dict[TOCTextLocale, list] = {}
+            for i, n in existing:
+                key = _normalize_locale_key(n.Locale) or PYTOC_DEFAULT_LOCALE
+                existing_by_locale.setdefault(key, []).append((i, n))
+
+            new_locales = set(value.Localizations.keys())
+
+            for loc, text in value.Localizations.items():
+                if loc in existing_by_locale:
+                    for _, n in existing_by_locale[loc]:
+                        n.Value = TOCLocalizedDirectiveValue(text)
+                        n.RawText = _build_directive_raw(n.RawName, n.Locale, text)
+                else:
+                    line_locale = None if loc == PYTOC_DEFAULT_LOCALE else loc
+                    new_node = self._make_directive_node(canonical, canonical, line_locale, TOCLocalizedDirectiveValue(text))
+                    self._AST.Lines.insert(self._insertion_idx_for_directive(canonical), new_node)
+
+            obsolete = []
+            for loc, lst in existing_by_locale.items():
+                if loc not in new_locales:
+                    obsolete.extend(i for i, _ in lst)
+            self._remove_indices(obsolete)
+            return
+
+        if get_origin(spec.ValueType) is TOCListValue:
+            (lt,) = get_args(spec.ValueType)
+            if isinstance(value, TOCListValue):
+                items = list(value.Value)
+            elif isinstance(value, (list, tuple)):
+                items = list(value)
+            elif isinstance(value, str):
+                items = [v.strip() for v in value.split(",") if v.strip()]
+            else:
+                items = [value]
+
+            converted = []
+            for v in items:
+                if isinstance(v, lt):
+                    converted.append(v)
+                elif isinstance(v, str) and lt is int:
+                    converted.append(int(v))
+                else:
+                    converted.append(lt(v))
+
+            new_lv = TOCListValue[lt](", ".join(str(v) for v in converted), converted)
+
+            if existing:
+                _, first = existing[0]
+                first.Value = new_lv
+                first.RawText = _build_directive_raw(first.RawName, first.Locale, _value_to_str(new_lv))
+                self._remove_indices([i for i, _ in existing[1:]])
+            else:
+                node = self._make_directive_node(canonical, canonical, None, new_lv)
+                self._AST.Lines.insert(self._directive_section_end_idx(), node)
+            return
+
+        # scalar
+        value = self._coerce_scalar(spec, value)
+        if existing:
+            _, first = existing[0]
+            first.Value = value
+            first.RawText = _build_directive_raw(first.RawName, first.Locale, _value_to_str(value))
+            self._remove_indices([i for i, _ in existing[1:]])
         else:
-            self.rebuild_file_section()
+            node = self._make_directive_node(canonical, canonical, None, value)
+            self._AST.Lines.insert(self._directive_section_end_idx(), node)
 
-        self.__set("_files_dirty", False)
+    @property
+    def Files(self) -> list[TOCFileEntryLine]:
+        return [n for n in self._AST.Lines if isinstance(n, TOCFileEntryLine)]
 
-    def sync_all(self):
-        self.sync_attributes_to_ast()
-        self.sync_files_to_ast()
+    @property
+    def Comments(self) -> list[TOCCommentLine]:
+        return [n for n in self._AST.Lines if isinstance(n, TOCCommentLine)]
 
-    def load_file(self, file_path: Union[str | Path]):
+    @property
+    def ExtendedDirectives(self) -> dict[str, str]:
+        out: dict[str, str] = {}
+        for n in self._AST.Lines:
+            if isinstance(n, TOCDirectiveLine) and n.IsExtendedDirective:
+                if isinstance(n.Value, TOCLocalizedDirectiveValue):
+                    text = n.Value.get_translation(PYTOC_DEFAULT_LOCALE)
+                else:
+                    text = _value_to_str(n.Value)
+                out.setdefault(n.RawName, text)
+        return out
+
+    @property
+    def UnknownDirectives(self) -> dict[str, TOCUnkValue]:
+        out: dict[str, TOCUnkValue] = {}
+        for n in self._AST.Lines:
+            if isinstance(n, TOCDirectiveLine) and not n.IsExtendedDirective and isinstance(n.Value, TOCUnkValue):
+                out.setdefault(n.CanonicalName, n.Value)
+        return out
+
+    def load_file(self, file_path: Union[str, Path]):
         if not isinstance(file_path, Path):
             file_path = Path(file_path)
-
         if not file_path.exists():
             raise FileNotFoundError(f"TOC file does not exist at the given path: '{file_path}'")
-
         with open(file_path, encoding="utf-8") as f:
             lines = f.readlines()
+        self._AST = TOCAST.from_lines(lines)
 
-        ast = TOCAST.from_lines(lines)
-        self.set_ast(ast)
-
-    def export(self, export_path: Union[str | Path], overwrite: bool = False):
-        self.sync_all()
-
+    def export(self, export_path: Union[str, Path], overwrite: bool = False):
         if not isinstance(export_path, Path):
             export_path = Path(export_path)
-
         if export_path.exists() and not overwrite:
-            raise FileExistsError(f"File already exists at the provided export path. To overwrite, pass `overwrite=True` into TOCFile.Export().")
-
-        text = "".join(node.RawText for node in self._AST.Lines)
+            raise FileExistsError(f"File already exists at '{export_path}'. Pass overwrite=True to replace it.")
+        text = "".join(n.RawText for n in self._AST.Lines)
         with open(export_path, "w", encoding="utf-8", newline="") as f:
             f.write(text)
 
-    def get_all_addon_file_names(self) -> List[str]:
-        return [f.FileEntry.export() for f in self.Files]
+    def get_all_addon_file_names(self) -> list[str]:
+        return [n.FileEntry.export() for n in self.Files]
+
+    def get_raw_files(self) -> list[str]:
+        return [n.FileEntry.RawFilePath for n in self.Files]
+
+    def add_file(self, file_path: str):
+        if not file_path.endswith("\n"):
+            file_path = file_path + "\n"
+        node = parse_file_line(0, file_path)
+        self._AST.Lines.append(node)
+
+    def remove_file(self, index: int):
+        ast_indices = [i for i, n in enumerate(self._AST.Lines) if isinstance(n, TOCFileEntryLine)]
+        del self._AST.Lines[ast_indices[index]]
+
+    def update_file_path(self, index: int, new_path: str):
+        ast_indices = [i for i, n in enumerate(self._AST.Lines) if isinstance(n, TOCFileEntryLine)]
+        if not new_path.endswith("\n"):
+            new_path = new_path + "\n"
+        self._AST.Lines[ast_indices[index]] = parse_file_line(0, new_path)
+
+    def add_empty_line(self):
+        self._AST.Lines.append(TOCEmptyLine(0, "\n"))
+
+    def add_dependency(self, dep_name: str, required: bool = False):
+        spec_name = "Dependencies" if required else "OptionalDeps"
+        spec = TOC_DIRECTIVES[spec_name]
+        current = self._get_directive(spec)
+        if current is None:
+            new_lv = TOCListValue[str](dep_name, [dep_name])
+        else:
+            new_values = list(current.Value) + [dep_name]
+            new_lv = TOCListValue[str](", ".join(new_values), new_values)
+        self._set_directive(spec, new_lv)
 
     def can_load_addon(self, context: TOCEvaluationContext) -> tuple[bool, TOCAddonLoadError]:
-        if self.Dependencies is not None and len(self.Dependencies) > 0:
-            deps_fulfilled = True
-            for dep in self.Dependencies:
+        deps = self.Dependencies
+        if deps is not None and len(deps) > 0:
+            for dep in deps:
                 if not context.is_addon_loaded(dep):
-                    deps_fulfilled = False
-                    break
-
-            if not deps_fulfilled:
-                return False, TOCAddonLoadError.MissingDependency
+                    return False, TOCAddonLoadError.MissingDependency
 
         if self.AllowLoad is not None and not self.AllowLoad.evaluate(context):
             return False, TOCAddonLoadError.WrongEnvironment
-        elif self.AllowLoadGameType is not None and not self.AllowLoadGameType.evaluate(context):
+        if self.AllowLoadGameType is not None and not self.AllowLoadGameType.evaluate(context):
             return False, TOCAddonLoadError.WrongGameType
-        elif self.AllowLoadTextLocale is not None and not self.AllowLoadTextLocale.evaluate(context):
+        if self.AllowLoadTextLocale is not None and not self.AllowLoadTextLocale.evaluate(context):
             return False, TOCAddonLoadError.WrongTextLocale
 
         return True, TOCAddonLoadError.Success
-
-    def add_dependency(self, dep_name: str, required: bool = False):
-        attr_name = "Dependencies" if required else "OptionalDeps"
-        attr = getattr(self, attr_name, None)
-
-        if attr is None:
-            if not dep_name.endswith("\n"):
-                value_name = dep_name
-                dep_name += "\n"
-            else:
-                value_name = dep_name.removesuffix("\n")
-
-            attr = TOCListValue(dep_name, [value_name])
-            setattr(self, attr_name, attr)
-
-            self.__insert_new_directive(attr_name, attr)
-            return
-
-        attr: TOCListValue
-        attr.append(dep_name, dep_name)
-        self.__set("_attr_dirty", True)
-
-    def update_file_path(self, index: int, new_path: str):
-        local_file = self.Files[index]
-        new_file = parse_file_line(local_file.LineNumber, new_path)
-
-        del self.Files[index]
-        self.Files.insert(index, new_file)
-
-        self.__set("_files_dirty", True)
-
-    def add_file(self, file_path: str):
-        if not self.Files:
-            line_number = 1
-        else:
-            last_line_number = self.Files[-1].LineNumber
-            line_number = last_line_number + 1
-
-        if not file_path.endswith("\n"):
-            file_path += "\n"
-
-        new_file = parse_file_line(line_number, file_path)
-        self.Files.append(new_file)
-
-        self.__set("_files_dirty", True)
-
-    def remove_file(self, index: int):
-        del self.Files[index]
-        del self._file_bindings[index]
-
-        self.__set("_files_dirty", True)
-
-    def set_directive(self, directive: str, value: Any):
-        canonical_name = ALIAS_TO_CANONICAL.get(directive.lower())
-        spec = TOC_DIRECTIVES.get(canonical_name, None)
-        if spec is None:
-            print("SPEC IS NONE! BARK BARK BARK")
-            return
-
-        spec: TOCDirectiveSpec
-        if get_origin(spec.ValueType) is TOCListValue and isinstance(value, list):
-            value = ", ".join([str(v) for v in value])
-
-        if spec.ValueType is TOCBoolType:
-            value = str(value)
-
-        node = parse_typed_value(value, spec)
-        if not isinstance(node, TOCCondition):
-            if not node.Raw.endswith("\n"):
-                node.Raw += "\n"
-
-        if spec.ValueType is TOCLocalizedDirectiveValue:
-            node.set_translation(PYTOC_DEFAULT_LOCALE, value)
-
-        self.__insert_new_directive(directive, value)
-        self.__set(canonical_name, node)
-        self.__set("_attr_dirty", True)
-
-    def add_empty_line(self):
-        line_number = len(self._AST.Lines) + 1
-        line = TOCEmptyLine(line_number, "\n")
-
-        self._AST.Lines.insert(line_number, line)

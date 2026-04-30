@@ -26,6 +26,16 @@ class TOCBoolType:
     def __bool__(self):
         return self.Value
 
+    def __eq__(self, other):
+        if isinstance(other, TOCBoolType):
+            return self.Value == other.Value
+        if isinstance(other, bool):
+            return self.Value == other
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.Value)
+
 
 @dataclass
 class TOCIntValue:
@@ -39,7 +49,6 @@ class TOCListValue[T]:
     Value: List[T]
 
     Converter: Callable[[str], T] = field(repr=False, default=None)
-    _nextindex: int = 0
 
     def __post_init__(self):
         if self.Converter is None:
@@ -55,70 +64,31 @@ class TOCListValue[T]:
         self.Value = new_values
 
     def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self.Value is None or self._nextindex >= len(self.Value):
-            raise StopIteration
-        value = self.Value[self._nextindex]
-        self._nextindex += 1
-        return value
+        return iter(self.Value)
 
     def __contains__(self, value):
-        for entry in self.Value:
-            if entry == value:
-                return True
+        return value in self.Value
 
     def __len__(self):
         return len(self.Value)
 
+    def __getitem__(self, idx):
+        return self.Value[idx]
+
     def __eq__(self, other):
         if other is None:
             return False
+        if isinstance(other, TOCListValue):
+            return self.Value == other.Value
+        if isinstance(other, list):
+            return self.Value == other
+        if len(self.Value) == 1:
+            return self.Value[0] == other
+        return NotImplemented
 
-        try:
-            if len(self) != len(other):
-                return False
-            elif isinstance(other, TOCListValue):
-                for value in self:
-                    other_value = other.Value.index(value)
-                    if other_value is None:
-                        return False
-            elif isinstance(other, list):
-                for value in self:
-                    other_value = other.index(value)
-                    if other_value is None:
-                        return False
-            else:
-                return super().__eq__(other)
-        except ValueError:
-            return False
+    def __hash__(self):
+        return hash(tuple(self.Value))
 
-        return True
-
-    def append_line(self, line):
-        raw = self.Raw.removesuffix("\n")
-        raw += f", {line.Value.Raw}"
-        if not raw.endswith("\n"):
-            raw += "\n"
-
-        self.Raw = raw
-        self.Value.extend(line.Value.Value)
-
-        # trigger conversions again if necessary
-        self.__post_init__()
-
-    def append(self, raw: str, value: str):
-        raw = self.Raw.removesuffix("\n")
-        raw += f", {raw}"
-        if not raw.endswith("\n"):
-            raw += "\n"
-
-        self.Raw = raw
-        self.Value.append(value)
-
-        # trigger conversions again if necessary
-        self.__post_init__()
 
 
 @dataclass
@@ -225,7 +195,7 @@ TOC_DIRECTIVES: dict[str, TOCDirectiveSpec] = {
     ),
     "IconTexture": TOCDirectiveSpec(Name="IconTexture", ValueType=TOCLocalizedDirectiveValue, CanBeLocalized=True),
     "IconAtlas": TOCDirectiveSpec(Name="IconAtlas", ValueType=TOCLocalizedDirectiveValue, CanBeLocalized=True),
-    "AddonCompartmentFunc": TOCDirectiveSpec(Name="AddonCompartmentFunc", ValueType=str, CanBeLocalized=True),
+    "AddonCompartmentFunc": TOCDirectiveSpec(Name="AddonCompartmentFunc", ValueType=TOCLocalizedDirectiveValue, CanBeLocalized=True),
     "AddonCompartmentFuncOnEnter": TOCDirectiveSpec(Name="AddonCompartmentFuncOnEnter", ValueType=TOCLocalizedDirectiveValue, CanBeLocalized=True),
     "AddonCompartmentFuncOnLeave": TOCDirectiveSpec(Name="AddonCompartmentFuncOnLeave", ValueType=TOCLocalizedDirectiveValue, CanBeLocalized=True),
     "LoadOnDemand": TOCDirectiveSpec(
@@ -247,8 +217,8 @@ TOC_DIRECTIVES: dict[str, TOCDirectiveSpec] = {
     "Dependencies": TOCDirectiveSpec(
         Name="Dependencies",
         ValueType=TOCListValue[str],
-        Aliases=("Dependencies", "Deps", "RequiredDeps"),
-        AliasFunc=lambda name: name.lower().startswith("deps"),
+        Aliases=("RequiredDeps",),
+        AliasFunc=lambda name: name.lower().startswith("dep"),
         AllowDuplicates=True,
     ),
     "OptionalDeps": TOCDirectiveSpec(
@@ -276,14 +246,11 @@ ALIAS_TO_CANONICAL: dict[str, str] = dict()
 ALIAS_FUNCTIONS: dict[str, Callable[[str], bool]] = dict()
 
 for spec in TOC_DIRECTIVES.values():
+    ALIAS_TO_CANONICAL[spec.Name] = spec.Name
+    ALIAS_TO_CANONICAL[spec.Name.lower()] = spec.Name
     if spec.Aliases:
-        if spec.AliasFunc is not None:
-            ALIAS_FUNCTIONS[spec.Name] = spec.AliasFunc
-            ALIAS_FUNCTIONS[spec.Name.lower()] = spec.AliasFunc
-
         for name in spec.Aliases:
             ALIAS_TO_CANONICAL[name] = spec.Name
             ALIAS_TO_CANONICAL[name.lower()] = spec.Name
-    else:
-        ALIAS_TO_CANONICAL[spec.Name] = spec.Name
-        ALIAS_TO_CANONICAL[spec.Name.lower()] = spec.Name
+    if spec.AliasFunc is not None:
+        ALIAS_FUNCTIONS[spec.Name] = spec.AliasFunc

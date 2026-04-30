@@ -91,23 +91,23 @@ def is_extended_directive(directive_name: str) -> bool:
     return directive_name.lower().startswith("x-")
 
 
-def resolve_directive_name_and_locale(raw: str) -> tuple[str, Optional[str]]:
+def resolve_directive_name_and_locale(raw: str) -> tuple[str, str, Optional[TOCTextLocale]]:
+    base = raw
+    locale = None
     if "-" in raw:
         if raw.startswith("X-"):
-            parts = raw.rsplit("-", 1)
-            base, maybe_locale = parts[0], parts[1]
-            if not maybe_locale in list(TOCTextLocale):
-                base = f"{base}-{maybe_locale}"
-                locale = None
-            else:
-                locale = TOCTextLocale[maybe_locale]
+            head, _, tail = raw.rpartition("-")
+            if tail in TOCTextLocale.__members__:
+                base = head
+                locale = TOCTextLocale[tail]
         else:
-            base, locale = raw.split("-", 1)
-    else:
-        base, locale = raw, None
+            head, _, tail = raw.partition("-")
+            if tail in TOCTextLocale.__members__:
+                base = head
+                locale = TOCTextLocale[tail]
 
     canonical = ALIAS_TO_CANONICAL.get(base.lower(), base)
-    return canonical, locale
+    return canonical, base, locale
 
 
 def parse_typed_value(raw_value: str, spec: TOCDirectiveSpec):
@@ -132,17 +132,21 @@ def parse_typed_value(raw_value: str, spec: TOCDirectiveSpec):
         (list_type,) = get_args(_type)
         values = []
 
-        if isinstance(raw_value, list_type):
-            values.append(raw_value)
-        elif isinstance(raw_value, str):
+        if isinstance(raw_value, str):
             for v in raw_value.split(","):
-                if isinstance(v, str):
-                    v = v.strip()
+                v = v.strip()
+                if list_type is not str and not isinstance(v, list_type):
+                    v = list_type(v)
+                values.append(v)
+        elif isinstance(raw_value, (list, tuple)):
+            for v in raw_value:
                 if not isinstance(v, list_type):
                     v = list_type(v)
                 values.append(v)
+        else:
+            values.append(raw_value if isinstance(raw_value, list_type) else list_type(raw_value))
 
-        return TOCListValue[list_type](raw_value, values)
+        return TOCListValue[list_type](raw_value if isinstance(raw_value, str) else ", ".join(str(v) for v in values), values)
 
     if get_origin(_type) is TOCEnumValue:
         (enum_type,) = get_args(_type)
@@ -162,24 +166,25 @@ def parse_typed_value(raw_value: str, spec: TOCDirectiveSpec):
 def parse_directive_line(line_no: int, line: str) -> Optional[TOCDirectiveLine]:
     name, value = line.split(": ", 1)
     name = name.split(" ", 1)[1]
-    canonical, locale = resolve_directive_name_and_locale(name)
+    canonical, base, locale = resolve_directive_name_and_locale(name)
     is_extended = is_extended_directive(canonical)
 
-    value.removesuffix("\n")
-
-    if is_extended:  # use raw value for 'X-' directives
-        node = TOCLocalizedDirectiveValue(value)
-        node.set_translation(locale, cleanup_text(value))
-        parsed_value = node
+    if is_extended:
+        parsed_value = TOCLocalizedDirectiveValue(value)
+        if locale is not None:
+            parsed_value.set_translation(locale, cleanup_text(value))
     else:
         spec = TOC_DIRECTIVES.get(canonical)
         if spec is None:
             for spec_name, func in ALIAS_FUNCTIONS.items():
-                if func(name):
-                    spec = TOC_DIRECTIVES.get(spec_name)
+                if func(base):
+                    matched = TOC_DIRECTIVES.get(spec_name)
+                    if matched is not None:
+                        spec = matched
+                        canonical = spec.Name
+                        break
 
         if spec is None:
-            # this is an unknown creatura
             parsed_value = TOCUnkValue(value, cleanup_text(value))
         else:
             parsed_value = parse_typed_value(value, spec)
@@ -187,7 +192,7 @@ def parse_directive_line(line_no: int, line: str) -> Optional[TOCDirectiveLine]:
     return TOCDirectiveLine(
         RawText=line,
         CanonicalName=canonical,
-        RawName=name,
+        RawName=base,
         Locale=locale,
         Value=parsed_value,
         IsExtendedDirective=is_extended,

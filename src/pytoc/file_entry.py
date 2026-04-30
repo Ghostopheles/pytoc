@@ -50,7 +50,7 @@ class TOCFileEntry:
 
         if self.Conditions:
             for condition in self.Conditions:
-                condition_str = f" {condition.export()}"
+                condition_str = f" {condition.export(add_newline=False)}"
                 path += condition_str
 
         return path.strip()

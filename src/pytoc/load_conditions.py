@@ -16,7 +16,8 @@ class TOCCondition(ABC):
     def evaluate(self, ctx: TOCEvaluationContext) -> bool: ...
 
     def export(self, add_newline: bool = True) -> str:
-        return f"[{self.ExportName} " + ", ".join(self.Values) + "]" + "\n" if add_newline else ""
+        body = f"[{self.ExportName} " + ", ".join(self.Values) + "]"
+        return body + ("\n" if add_newline else "")
 
 
 @dataclass(frozen=True)
