@@ -4,80 +4,94 @@
 
 A Python package for reading and writing World of Warcraft addon [TOC](https://warcraft.wiki.gg/wiki/TOC_format) files.
 
-> [!WARNING]
-> pytoc is currently in the midst of a rewrite to better support faithful imports, exports, and load order simulation. Some information may be outdated or incorrect.
-
 ## Installation
 
-You can install this package via `pip`.
-
 ```
-pip install wow-pytoc
+pip install wow-pytoc 
 ```
 
 ## Usage
 
-Reading a TOC file:
+### Reading a TOC file
+
 ```py
-from pytoc import *
+from pytoc import TOCFile, TOCTextLocale
 
-file_path: str = "X:/path/to/my/addon.toc"
-toc = TOCFile(file_path)
+toc = TOCFile("path/to/MyAddon.toc")
 
-print(toc.Interface)
-print(toc.Title)
-print(toc.LocalizedTitle["frFR"])
-print(toc.AdditionalFields["X-Website"])
+print(toc.Interface)          # TOCListValue[int] of all interface versions
+print(toc.Title)              # base (enUS) value
+print(toc.Title.get_translation(TOCTextLocale.frFR))
+print(toc.ExtendedDirectives.get("X-Website"))
+print(toc.UnknownDirectives.get("SomeUnknownField"))
 
-for file in toc.Files:
-    file: TOCFileEntry
-    print(file)
-    if file.Conditions:
-        for condition in file.Conditions:
-            print(condition.export())
+for dep in toc.Dependencies:
+    print(f"Required: {dep}")
+for dep in toc.OptionalDeps:
+    print(f"Optional: {dep}")
 
-for dep in toc.Dependencies
-    dep: TOCDependency
-    print(f"Dependency Name: {dep.Name} Required: {dep.Required}")
+for file_line in toc.Files:
+    entry = file_line.FileEntry
+    print(entry.export())
 ```
 
-Writing a TOC file:
+### Writing a TOC file
+
 ```py
-from pytoc import TOCFile
+from pytoc import TOCFile, TOCLocalizedDirectiveValue, TOCListValue, TOCTextLocale
 
 toc = TOCFile()
-toc.Interface = 110000
-toc.Author = "Ghost"
-toc.Title = "My Addon"
-toc.LocalizedTitle = {
-    "frFR": "Mon Addon",
-}
-toc.Files = [
-    TOCFileEntry("file1.lua"),
-    TOCFileEntry("file2.xml"),
-    TOCFileEntry("MainlineOnly.lua", [
-        TOCAllowLoadGameType({TOCGameType.Mainline})
-    ]),
-    TOCFileEntry("PlunderstormGlueOnly.lua", [
-        TOCAllowLoadGameType({TOCGameType.Plunderstorm}),
-        TOCAllowLoadEnvironment({TOCEnvironment.Glue})
-    ])
-]
+toc.Interface = TOCListValue("110000", [110000])
+toc.Author = TOCLocalizedDirectiveValue("Ghost")
+toc.Title = TOCLocalizedDirectiveValue(
+    "MyAddon",
+    {TOCTextLocale.frFR: "MonAddon", TOCTextLocale.deDE: "MeinAddon"},
+)
 
-required = True
-toc.add_dependency("totalRP3", required)
+toc.add_file("MyAddon.lua")
+toc.add_file("MyAddon.xml")
+toc.add_dependency("totalRP3", required=False)
 
-output = "path/to/dest.toc"
-overwrite = True
-toc.export(output, overwrite)
+toc.export("path/to/MyAddon.toc", overwrite=True)
 ```
 
-For some examples, take a look at the [test_toc.py](tests/test_toc.py) file.
+### Round-trip
+
+Reading and exporting an existing file produces byte-identical output.
+
+```py
+toc = TOCFile("MyAddon.toc")
+toc.Author = TOCLocalizedDirectiveValue("NewAuthor")
+toc.export("MyAddon.toc", overwrite=True)
+# Every line unchanged except ## Author:
+```
+
+### Load condition simulation
+
+`TOCEvaluationContext` lets you simulate whether an addon (or a specific file entry) would load under given game conditions.
+
+```py
+from pytoc import (
+    TOCFile, TOCEvaluationContext, TOCAllowLoadGameType,
+    TOCGameType, TOCEnvironment, TOCTextLocale,
+)
+
+ctx = TOCEvaluationContext(TOCGameType.Mainline, TOCEnvironment.Global, TOCTextLocale.enUS)
+
+toc = TOCFile("MyAddon.toc")
+can_load, err = toc.can_load_addon(ctx)
+
+# Per-file entry
+for file_line in toc.Files:
+    if file_line.FileEntry.should_load(ctx):
+        print(file_line.FileEntry.resolve_path(ctx))
+```
 
 ## Notes/Quirks
+
 > [!NOTE]
-> - All dependency fields will be added to the `TOCFile.Dependencies` list. 
-> - Non-standard directives (that don't start with `X-`) will be added directly to the `TOCFile` object, but will **not** be exported.
-> - Fields will overwrite eachother if more than one of that directive is present in the TOC file, taking the last found value.
-> - For certain fields that accept comma-delimited input, the attribute may end up being either a `list` or a `str|int`, depending on if there are multiple values or just a single one.
-> - Comments and empty lines will be ignored in the current parser and will not be preserved when exporting.
+> - `Dependencies` and `OptionalDeps` are `TOCListValue[str]`; use `add_dependency(name, required=True/False)` to append safely.
+> - `X-` prefixed fields are available via `toc.ExtendedDirectives` (a `dict[str, str]`).
+> - Unrecognised directives (non-`X-`, not in the known list) land in `toc.UnknownDirectives` and are **not** exported.
+> - Multiple occurrences of the same directive are merged - last value wins for scalars, values are combined for list fields.
+> - Comments and blank lines are preserved on round-trip.
