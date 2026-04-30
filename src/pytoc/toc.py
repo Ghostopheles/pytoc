@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from typing import Any, Optional, Union, get_args, get_origin
 
@@ -325,6 +326,14 @@ class TOCFile(metaclass=_TOCFileMeta):
             export_path = Path(export_path)
         if export_path.exists() and not overwrite:
             raise FileExistsError(f"File already exists at '{export_path}'. Pass overwrite=True to replace it.")
+        for node in self._AST.Lines:
+            line_text = node.RawText.rstrip("\n")
+            if len(line_text) > PYTOC_CLIENT_MAX_LINE_LENGTH:
+                warnings.warn(
+                    f"Line {node.LineNumber + 1} exceeds {PYTOC_CLIENT_MAX_LINE_LENGTH} characters ({len(line_text)} chars). The WoW client will not read more than {PYTOC_CLIENT_MAX_LINE_LENGTH} characters per line.",
+                    UserWarning,
+                    stacklevel=2,
+                )
         text = "".join(n.RawText for n in self._AST.Lines)
         with open(export_path, "w", encoding="utf-8", newline="") as f:
             f.write(text)

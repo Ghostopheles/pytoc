@@ -1,8 +1,10 @@
 import re
+import warnings
 
 from dataclasses import dataclass
 from typing import Optional, Any, get_args, get_origin
 
+from .shared import *
 from .enums import *
 from .file_entry import *
 from .directives import *
@@ -262,6 +264,13 @@ class TOCAST:
     def from_lines(cls, lines: List[str]):
         toc_lines = []
         for line_no, raw_line in enumerate(lines):
+            stripped = raw_line.rstrip("\n")
+            if len(stripped) > PYTOC_CLIENT_MAX_LINE_LENGTH:
+                warnings.warn(
+                    f"Line {node.LineNumber + 1} exceeds {PYTOC_CLIENT_MAX_LINE_LENGTH} characters ({len(stripped)} chars). The WoW client will not read more than {PYTOC_CLIENT_MAX_LINE_LENGTH} characters per line.",
+                    UserWarning,
+                    stacklevel=3,
+                )
             if is_empty(raw_line):
                 toc_lines.append(TOCEmptyLine(line_no, raw_line))
             elif is_directive(raw_line):
