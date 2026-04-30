@@ -90,7 +90,6 @@ class TOCListValue[T]:
         return hash(tuple(self.Value))
 
 
-
 @dataclass
 class TOCEnumValue[T]:
     Raw: str
