@@ -123,7 +123,7 @@ EXPORT_PATH = WORKING_DIRECTORY / "test_output.toc"
 
 def test_export():
     toc = TOCFile()
-    toc.Interface = TOCListValue("1200001", [1200001])
+    toc.Interface = TOCListValue("120001", [120001])
     toc.Author = TOCLocalizedDirectiveValue("Ghost")
     toc.Title = TOCLocalizedDirectiveValue(
         "GhostTools",
@@ -145,7 +145,7 @@ def test_export():
 
 def test_read_export():
     toc = TOCFile(EXPORT_PATH)
-    assert toc.Interface == 1200001
+    assert toc.Interface == 120001
     assert toc.Author == "Ghost"
     assert toc.Title == "GhostTools"
     assert toc.Title.get_translation(TOCTextLocale.frFR) == "GrasTools"
