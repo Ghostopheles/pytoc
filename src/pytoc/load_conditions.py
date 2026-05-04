@@ -65,7 +65,7 @@ class TOCExcludeLoad(TOCCondition):
     ExportName: str = "ExcludeLoad"
 
     def evaluate(self, ctx: TOCEvaluationContext) -> bool:
-        return ctx.Environment not in self.Values or TOCEnvironment.Both not in self.Values
+        return ctx.Environment not in self.Values and TOCEnvironment.Both not in self.Values
 
 
 @dataclass(frozen=True)
@@ -74,7 +74,7 @@ class TOCExcludeLoadEnvironment(TOCCondition):
     ExportName: str = "ExcludeLoadEnvironment"
 
     def evaluate(self, ctx: TOCEvaluationContext) -> bool:
-        return ctx.Environment not in self.Values or TOCEnvironment.Both not in self.Values
+        return ctx.Environment not in self.Values and TOCEnvironment.Both not in self.Values
 
 
 @dataclass(frozen=True)
