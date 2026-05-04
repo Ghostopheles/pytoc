@@ -596,6 +596,7 @@ class TestFilesOnlyTOCInsertion:
 
     def test_directive_inserted_before_files_in_files_only_toc(self):
         from pytoc.parser import TOCAST, TOCFileEntryLine
+
         toc = TOCFile()
         toc.add_file("file1.lua")
         toc.add_file("file2.lua")
@@ -604,6 +605,7 @@ class TestFilesOnlyTOCInsertion:
         lines = toc._AST.Lines
         # Find positions
         from pytoc.parser import TOCDirectiveLine
+
         directive_positions = [i for i, n in enumerate(lines) if isinstance(n, TOCDirectiveLine)]
         file_positions = [i for i, n in enumerate(lines) if isinstance(n, TOCFileEntryLine)]
         assert directive_positions, "No directive found"
@@ -621,6 +623,7 @@ class TestFilesOnlyTOCInsertion:
         toc.Title = TOCLocalizedDirectiveValue("Title")
         toc.Notes = TOCLocalizedDirectiveValue("Notes text")
         from pytoc.parser import TOCDirectiveLine, TOCFileEntryLine
+
         lines = toc._AST.Lines
         directive_positions = [i for i, n in enumerate(lines) if isinstance(n, TOCDirectiveLine)]
         file_positions = [i for i, n in enumerate(lines) if isinstance(n, TOCFileEntryLine)]
